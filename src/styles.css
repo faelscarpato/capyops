@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --dark-bg: #050505;
+    --dark-surface: #0b0b0b;
+    --dark-surface-2: #111216;
+    --dark-border: rgba(255, 255, 255, 0.08);
+    --dark-border-strong: rgba(255, 255, 255, 0.16);
+    --dark-text: #f8fafc;
+    --dark-muted: rgba(248, 250, 252, 0.7);
+    --dark-muted-2: rgba(248, 250, 252, 0.55);
+  }
+
+  html {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100%;
+    font-family: 'Space Grotesk', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    @apply bg-gray-50 text-gray-900;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html.dark body {
+    background: var(--dark-bg);
+    color: var(--dark-text);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white border border-gray-200 rounded-xl shadow-soft;
+  }
+  .dark .card {
+    background: var(--dark-surface);
+    border-color: var(--dark-border);
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium border;
+  }
+  .btn-primary {
+    @apply btn bg-blue-600 text-white border-blue-600 hover:bg-blue-700;
+  }
+  .btn-ghost {
+    @apply btn bg-white text-gray-800 border-gray-200 hover:bg-gray-50;
+  }
+  .dark .btn-ghost {
+    @apply text-white/80;
+    background: var(--dark-surface);
+    border-color: var(--dark-border);
+  }
+  .dark .btn-ghost:hover {
+    background: var(--dark-surface-2);
+  }
+  .dark .btn-primary {
+    @apply text-slate-950;
+    background: linear-gradient(120deg, #22d3ee, #34d399);
+    border-color: rgba(34, 211, 238, 0.6);
+  }
+  .dark .btn-primary:hover {
+    background: linear-gradient(120deg, #38e8ff, #45e3a6);
+  }
+  .input {
+    @apply w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400;
+  }
+  .dark .input {
+    background: var(--dark-surface);
+    border-color: var(--dark-border-strong);
+    color: var(--dark-text);
+  }
+  .dark .input:focus {
+    border-color: rgba(34, 211, 238, 0.6);
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.25);
+  }
+  .label {
+    @apply text-xs font-medium text-gray-600;
+  }
+  .dark .label {
+    color: var(--dark-muted);
+  }
+}
+
+@layer utilities {
+  .dark .dark\:bg-slate-950 {
+    background-color: var(--dark-bg) !important;
+  }
+  .dark .dark\:bg-slate-900 {
+    background-color: var(--dark-surface) !important;
+  }
+  .dark .dark\:bg-slate-800 {
+    background-color: var(--dark-surface-2) !important;
+  }
+  .dark .dark\:border-slate-800 {
+    border-color: var(--dark-border) !important;
+  }
+  .dark .dark\:border-slate-700 {
+    border-color: var(--dark-border-strong) !important;
+  }
+  .dark .dark\:text-slate-100 {
+    color: var(--dark-text) !important;
+  }
+  .dark .dark\:text-slate-200 {
+    color: var(--dark-text) !important;
+  }
+  .dark .dark\:text-slate-300 {
+    color: var(--dark-muted) !important;
+  }
+  .dark .dark\:text-slate-400 {
+    color: var(--dark-muted-2) !important;
+  }
+  .dark .dark\:text-slate-500 {
+    color: var(--dark-muted-2) !important;
+  }
+  .dark .dark\:hover\:bg-slate-800:hover {
+    background-color: var(--dark-surface-2) !important;
+  }
+  .dark .dark\:hover\:bg-slate-900:hover {
+    background-color: var(--dark-surface) !important;
+  }
+  .dark input[type='checkbox'] {
+    accent-color: #22d3ee;
+  }
+}
