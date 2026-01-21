@@ -10,7 +10,11 @@ import {
   LogOut,
   Menu,
   Package,
-  ReceiptText
+  ReceiptText,
+  Boxes,
+  CreditCard,
+  Layers,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useThemeMode } from './ThemeModeProvider';
@@ -19,6 +23,10 @@ import { SidebarWidgetProvider } from './SidebarWidgetContext';
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/estoque', label: 'Estoque', icon: Package },
+  { to: '/insumos', label: 'Insumos', icon: Boxes },
+  { to: '/despesas', label: 'Despesas', icon: CreditCard },
+  { to: '/kits', label: 'Kits', icon: Layers },
+  { to: '/orcamentos', label: 'Orcamentos', icon: FileText },
   { to: '/nova-venda', label: 'Nova venda', icon: ReceiptText },
   { to: '/precificador', label: 'Precificador', icon: Calculator },
   { to: '/relatorios', label: 'Relatorios', icon: BarChart3 },
@@ -38,6 +46,10 @@ export default function AppLayout() {
     return {
       '/': path === '/',
       '/estoque': path.startsWith('/estoque'),
+      '/insumos': path.startsWith('/insumos'),
+      '/despesas': path.startsWith('/despesas'),
+      '/kits': path.startsWith('/kits'),
+      '/orcamentos': path.startsWith('/orcamentos'),
       '/nova-venda': path.startsWith('/nova-venda'),
       '/precificador': path.startsWith('/precificador'),
       '/relatorios': path.startsWith('/relatorios'),
@@ -127,12 +139,12 @@ export default function AppLayout() {
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-slate-950">
-      <aside className="hidden w-60 flex-col border-r border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900 md:flex">
+      <aside className="hidden w-60 flex-col border-r border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900 md:flex no-print">
         {drawerContent}
       </aside>
 
       <div className="flex flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-900">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 dark:border-slate-800 dark:bg-slate-900 no-print">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}

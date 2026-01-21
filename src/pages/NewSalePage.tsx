@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ReceiptText } from 'lucide-react';
-import type { Product } from '../lib/types';
-import { applySale, listProducts } from '../lib/db';
+import type { PackingKit, Product } from '../lib/types';
+import { applyPackingKit, applySale, getPackingKitCost, listPackingKits, listProducts } from '../lib/db';
 import PageHeader from '../ui/PageHeader';
 import SectionCard from '../ui/SectionCard';
 
@@ -12,6 +12,7 @@ function toNumber(v: string): number {
 
 export default function NewSalePage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [kits, setKits] = useState<PackingKit[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -20,13 +21,19 @@ export default function NewSalePage() {
   const [quantity, setQuantity] = useState(1);
   const [salePrice, setSalePrice] = useState('');
   const [shippingCost, setShippingCost] = useState('0');
+  const [packagingCost, setPackagingCost] = useState('');
+  const [selectedKitId, setSelectedKitId] = useState('');
+  const [useKitCost, setUseKitCost] = useState(true);
+  const [applyKitStock, setApplyKitStock] = useState(false);
+  const [kitCost, setKitCost] = useState<number | null>(null);
   const [channel, setChannel] = useState('mercado_livre_normal');
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const p = await listProducts();
+      const [p, k] = await Promise.all([listProducts(), listPackingKits()]);
       setProducts(p);
+      setKits(k);
       setProductId(p[0]?.id ?? '');
       setLoading(false);
     })();
@@ -40,6 +47,26 @@ export default function NewSalePage() {
     }
   }, [selected]);
 
+  useEffect(() => {
+    if (selected?.packing_kit_id && !selectedKitId) {
+      setSelectedKitId(selected.packing_kit_id);
+    }
+  }, [selected, selectedKitId]);
+
+  useEffect(() => {
+    if (!selectedKitId) {
+      setKitCost(null);
+      return;
+    }
+    (async () => {
+      const cost = await getPackingKitCost(selectedKitId);
+      setKitCost(cost);
+      if (useKitCost) {
+        setPackagingCost(String(cost));
+      }
+    })();
+  }, [selectedKitId, useKitCost]);
+
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
     setMsg(null);
@@ -51,12 +78,24 @@ export default function NewSalePage() {
       const sc = toNumber(shippingCost);
       if (sp <= 0) throw new Error('Preço de venda inválido.');
 
+      let resolvedPackagingCost: number | null = null;
+      const manualPackaging = packagingCost.trim() ? toNumber(packagingCost) : null;
+
+      if (selectedKitId) {
+        const kitAppliedCost = applyKitStock ? await applyPackingKit(selectedKitId) : null;
+        const kitBaseCost = kitAppliedCost ?? kitCost ?? (await getPackingKitCost(selectedKitId));
+        resolvedPackagingCost = useKitCost ? kitBaseCost : manualPackaging;
+      } else {
+        resolvedPackagingCost = manualPackaging;
+      }
+
       await applySale({
         product_id: productId,
         quantity: q,
         channel,
         sale_price: sp,
-        shipping_cost: sc
+        shipping_cost: sc,
+        packaging_cost: resolvedPackagingCost
       });
 
       setMsg('Venda registrada e estoque atualizado.');
@@ -145,6 +184,51 @@ export default function NewSalePage() {
                 value={shippingCost}
                 onChange={(e) => setShippingCost(e.target.value)}
               />
+            </div>
+            <div>
+              <div className="label mb-1">Kit de embalagem (opcional)</div>
+              <select className="input" value={selectedKitId} onChange={(e) => setSelectedKitId(e.target.value)}>
+                <option value="">Sem kit</option>
+                {kits.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <div className="label mb-1">Custo de embalagem (R$)</div>
+              <input
+                className="input"
+                inputMode="decimal"
+                value={packagingCost}
+                onChange={(e) => setPackagingCost(e.target.value)}
+                disabled={!!selectedKitId && useKitCost}
+                placeholder={selectedKitId ? 'Auto pelo kit' : '0'}
+              />
+              {selectedKitId ? (
+                <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-slate-400">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={useKitCost}
+                      onChange={(e) => setUseKitCost(e.target.checked)}
+                    />
+                    Usar custo do kit (auto)
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={applyKitStock}
+                      onChange={(e) => setApplyKitStock(e.target.checked)}
+                    />
+                    Abater estoque dos insumos
+                  </label>
+                  <span>Referencia: {kitCost == null ? 'Calculando...' : kitCost.toFixed(2)}</span>
+                </div>
+              ) : null}
             </div>
           </div>
 

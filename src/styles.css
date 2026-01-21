@@ -136,3 +136,22 @@
     accent-color: #22d3ee;
   }
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: inline !important;
+  }
+  .print-block {
+    display: block !important;
+  }
+}
+
+.print-only {
+  display: none;
+}
+.print-block {
+  display: none;
+}

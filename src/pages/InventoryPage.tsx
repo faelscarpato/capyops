@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Product } from '../lib/types';
-import { listProducts, upsertProduct, updateProduct } from '../lib/db';
+import type { PackingKit, Product } from '../lib/types';
+import { listPackingKits, listProducts, upsertProduct, updateProduct } from '../lib/db';
 import PageHeader from '../ui/PageHeader';
 import SectionCard from '../ui/SectionCard';
 import StatusChip from '../ui/StatusChip';
@@ -13,6 +13,7 @@ function toNumber(v: string): number {
 export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
+  const [kits, setKits] = useState<PackingKit[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState(false);
 
@@ -23,7 +24,8 @@ export default function InventoryPage() {
     cost: 0,
     price: 0,
     stock: 0,
-    min_stock: 2
+    min_stock: 2,
+    packing_kit_id: ''
   });
 
   async function refresh() {
@@ -39,8 +41,18 @@ export default function InventoryPage() {
     }
   }
 
+  async function refreshKits() {
+    try {
+      const k = await listPackingKits();
+      setKits(k);
+    } catch {
+      setKits([]);
+    }
+  }
+
   useEffect(() => {
     refresh();
+    refreshKits();
   }, []);
 
   const rows = useMemo(() => {
@@ -62,10 +74,11 @@ export default function InventoryPage() {
         price: draft.price,
         stock: draft.stock,
         min_stock: draft.min_stock,
+        packing_kit_id: draft.packing_kit_id ? draft.packing_kit_id : null,
         is_active: true
       } as any);
       setNewOpen(false);
-      setDraft({ name: '', variant: 'branco', size_cm: 20, cost: 0, price: 0, stock: 0, min_stock: 2 });
+      setDraft({ name: '', variant: 'branco', size_cm: 20, cost: 0, price: 0, stock: 0, min_stock: 2, packing_kit_id: '' });
       await refresh();
     } catch (e: any) {
       setErr(e?.message ?? 'Erro ao criar produto.');
@@ -190,6 +203,21 @@ export default function InventoryPage() {
                 inputMode="numeric"
               />
             </div>
+            <div>
+              <div className="label mb-1">Kit de embalagem</div>
+              <select
+                className="input"
+                value={draft.packing_kit_id}
+                onChange={(e) => setDraft((d) => ({ ...d, packing_kit_id: e.target.value }))}
+              >
+                <option value="">Sem kit</option>
+                {kits.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </SectionCard>
       ) : null}
@@ -201,6 +229,7 @@ export default function InventoryPage() {
               <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
                 <th className="px-2 py-2 font-semibold">Produto</th>
                 <th className="px-2 py-2 font-semibold">Tamanho</th>
+                <th className="px-2 py-2 font-semibold">Kit</th>
                 <th className="px-2 py-2 text-right font-semibold">Custo</th>
                 <th className="px-2 py-2 text-right font-semibold">Preco</th>
                 <th className="px-2 py-2 text-center font-semibold">Estoque</th>
@@ -216,6 +245,20 @@ export default function InventoryPage() {
                     <div className="text-xs text-gray-500 dark:text-slate-400">{p.variant}</div>
                   </td>
                   <td className="px-2 py-3">{p.size_cm ? `${p.size_cm} cm` : '—'}</td>
+                  <td className="px-2 py-3">
+                    <select
+                      className="input w-44"
+                      value={p.packing_kit_id ?? ''}
+                      onChange={(e) => quickUpdate(p.id, { packing_kit_id: e.target.value || null })}
+                    >
+                      <option value="">Sem kit</option>
+                      {kits.map((k) => (
+                        <option key={k.id} value={k.id}>
+                          {k.name}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
                   <td className="px-2 py-3 text-right">
                     <input
                       className="input w-24 text-right"
@@ -257,7 +300,7 @@ export default function InventoryPage() {
               ))}
               {!rows.length && !loading ? (
                 <tr>
-                  <td colSpan={7} className="px-2 py-6">
+                  <td colSpan={8} className="px-2 py-6">
                     <div className="text-center text-sm text-gray-500 dark:text-slate-400">
                       Nenhum produto cadastrado.
                     </div>

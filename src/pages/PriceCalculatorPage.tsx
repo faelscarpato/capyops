@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import PageHeader from '../ui/PageHeader';
 import SectionCard from '../ui/SectionCard';
 import { readTaxRates, writeTaxRates } from '../lib/taxRates';
+import type { Product } from '../lib/types';
+import { getPackingKitCost, listProducts } from '../lib/db';
 
 function toNumber(value: string): number {
   const parsed = Number(String(value).replace(',', '.'));
@@ -14,6 +16,10 @@ function fmtBRL(value: number) {
 
 export default function PriceCalculatorPage() {
   const storedRates = useMemo(() => readTaxRates(), []);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState('');
+  const [useInventory, setUseInventory] = useState(false);
+  const [kitCost, setKitCost] = useState<number | null>(null);
   const [productCost, setProductCost] = useState('40');
   const [packagingCost, setPackagingCost] = useState('5');
   const [shippingCost, setShippingCost] = useState('20');
@@ -22,6 +28,41 @@ export default function PriceCalculatorPage() {
   const [ibsRate, setIbsRate] = useState(String(storedRates.ibs));
   const [isRate, setIsRate] = useState(String(storedRates.is));
   const [marginRate, setMarginRate] = useState(String(storedRates.margin));
+
+  useEffect(() => {
+    (async () => {
+      const p = await listProducts();
+      setProducts(p);
+      setSelectedProductId(p[0]?.id ?? '');
+    })();
+  }, []);
+
+  const selectedProduct = useMemo(
+    () => products.find((p) => p.id === selectedProductId) ?? null,
+    [products, selectedProductId]
+  );
+
+  useEffect(() => {
+    if (!selectedProduct?.packing_kit_id) {
+      setKitCost(null);
+      return;
+    }
+    (async () => {
+      const cost = await getPackingKitCost(selectedProduct.packing_kit_id as string);
+      setKitCost(cost);
+      if (useInventory) {
+        setPackagingCost(String(cost));
+      }
+    })();
+  }, [selectedProduct, useInventory]);
+
+  useEffect(() => {
+    if (!useInventory || !selectedProduct) return;
+    setProductCost(String(selectedProduct.cost ?? 0));
+    if (!selectedProduct.packing_kit_id) {
+      setPackagingCost('0');
+    }
+  }, [useInventory, selectedProduct]);
 
   useEffect(() => {
     writeTaxRates({
@@ -57,6 +98,44 @@ export default function PriceCalculatorPage() {
         title="Precificador"
         subtitle="Calcule o preco final com CBS, IBS e impostos opcionais."
       />
+
+      <SectionCard title="Produto do estoque (opcional)">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+          <div className="md:col-span-6">
+            <div className="label mb-1">Produto</div>
+            <select className="input" value={selectedProductId} onChange={(e) => setSelectedProductId(e.target.value)}>
+              <option value="">Selecione um produto</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} {p.size_cm ? `${p.size_cm}cm` : ''} • {p.variant}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="md:col-span-3">
+            <div className="label mb-1">Usar dados do estoque</div>
+            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={useInventory}
+                onChange={(e) => setUseInventory(e.target.checked)}
+              />
+              Auto preencher custo e embalagem
+            </label>
+          </div>
+          <div className="md:col-span-3">
+            <div className="label mb-1">Kit de embalagem</div>
+            <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+              {selectedProduct?.packing_kit_id
+                ? kitCost == null
+                  ? 'Calculando...'
+                  : fmtBRL(kitCost)
+                : 'Sem kit'}
+            </div>
+          </div>
+        </div>
+      </SectionCard>
 
       <SectionCard title="Dados do produto">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-12">

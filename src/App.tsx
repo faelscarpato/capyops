@@ -9,6 +9,10 @@ import NewSalePage from './pages/NewSalePage';
 import ReportsPage from './pages/ReportsPage';
 import MarketingPlanPage from './pages/MarketingPlanPage';
 import PriceCalculatorPage from './pages/PriceCalculatorPage';
+import SuppliesPage from './pages/SuppliesPage';
+import ExpensesPage from './pages/ExpensesPage';
+import PackingKitsPage from './pages/PackingKitsPage';
+import QuotesPage from './pages/QuotesPage';
 import OpeningSplash from './components/OpeningSplash';
 
 function Protected({ children }: { children: JSX.Element }) {
@@ -36,6 +40,10 @@ export default function App() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="estoque" element={<InventoryPage />} />
+          <Route path="insumos" element={<SuppliesPage />} />
+          <Route path="despesas" element={<ExpensesPage />} />
+          <Route path="kits" element={<PackingKitsPage />} />
+          <Route path="orcamentos" element={<QuotesPage />} />
           <Route path="nova-venda" element={<NewSalePage />} />
           <Route path="relatorios" element={<ReportsPage />} />
           <Route path="precificador" element={<PriceCalculatorPage />} />
