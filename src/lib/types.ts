@@ -112,6 +112,7 @@ export type PurchaseQuoteItem = {
   id: string;
   quote_id: string;
   supply_id: string | null;
+  product_id: string | null;
   description: string;
   unit: string;
   qty: number;

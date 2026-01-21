@@ -78,6 +78,7 @@ create table if not exists public.purchase_quote_items (
   user_id uuid not null default auth.uid(),
   quote_id uuid not null references public.purchase_quotes(id) on delete cascade,
   supply_id uuid null references public.supplies(id) on delete set null,
+  product_id uuid null references public.products(id) on delete set null,
   description text not null,
   unit text not null default 'un',
   qty numeric(12,3) not null check (qty >= 0),

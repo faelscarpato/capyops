@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { PurchaseQuote, PurchaseQuoteItem, Supply } from '../lib/types';
+import type { Product, PurchaseQuote, PurchaseQuoteItem, Supply } from '../lib/types';
 import {
   addPurchaseQuoteItem,
   createPurchaseQuote,
@@ -7,6 +7,7 @@ import {
   listAllPurchaseQuoteItems,
   listPurchaseQuoteItems,
   listPurchaseQuotes,
+  listProducts,
   listSupplies,
   updatePurchaseQuote,
   updatePurchaseQuoteItem
@@ -28,6 +29,7 @@ export default function QuotesPage() {
   const [items, setItems] = useState<PurchaseQuoteItem[]>([]);
   const [allItems, setAllItems] = useState<PurchaseQuoteItem[]>([]);
   const [supplies, setSupplies] = useState<Supply[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -47,6 +49,7 @@ export default function QuotesPage() {
 
   const [newItem, setNewItem] = useState({
     supply_id: '',
+    product_id: '',
     description: '',
     unit: 'un',
     qty: 1,
@@ -75,6 +78,15 @@ export default function QuotesPage() {
     }
   }
 
+  async function refreshProducts() {
+    try {
+      const data = await listProducts();
+      setProducts(data);
+    } catch {
+      setProducts([]);
+    }
+  }
+
   async function refreshAllItems() {
     try {
       const data = await listAllPurchaseQuoteItems();
@@ -96,6 +108,7 @@ export default function QuotesPage() {
   useEffect(() => {
     refreshQuotes();
     refreshSupplies();
+    refreshProducts();
     refreshAllItems();
   }, []);
 
@@ -187,12 +200,13 @@ export default function QuotesPage() {
       await addPurchaseQuoteItem({
         quote_id: selectedQuoteId,
         supply_id: newItem.supply_id || null,
+        product_id: newItem.product_id || null,
         description: newItem.description.trim(),
         unit: newItem.unit.trim() || 'un',
         qty: Math.max(0, Number(newItem.qty ?? 0)),
         unit_cost: Math.max(0, Number(newItem.unit_cost ?? 0))
       });
-      setNewItem({ supply_id: '', description: '', unit: 'un', qty: 1, unit_cost: 0 });
+      setNewItem({ supply_id: '', product_id: '', description: '', unit: 'un', qty: 1, unit_cost: 0 });
       await refreshItems(selectedQuoteId);
       await refreshAllItems();
     } catch (e: any) {
@@ -203,15 +217,46 @@ export default function QuotesPage() {
   function onSelectSupply(id: string) {
     const supply = supplies.find((s) => s.id === id);
     if (!supply) {
-      setNewItem((prev) => ({ ...prev, supply_id: '', description: '', unit: 'un', unit_cost: 0 }));
+      setNewItem((prev) => ({
+        ...prev,
+        supply_id: '',
+        product_id: prev.product_id,
+        description: '',
+        unit: 'un',
+        unit_cost: 0
+      }));
       return;
     }
     setNewItem((prev) => ({
       ...prev,
       supply_id: id,
+      product_id: '',
       description: supply.name,
       unit: supply.unit,
       unit_cost: supply.cost_per_unit
+    }));
+  }
+
+  function onSelectProduct(id: string) {
+    const product = products.find((p) => p.id === id);
+    if (!product) {
+      setNewItem((prev) => ({
+        ...prev,
+        product_id: '',
+        supply_id: prev.supply_id,
+        description: '',
+        unit: 'un',
+        unit_cost: 0
+      }));
+      return;
+    }
+    setNewItem((prev) => ({
+      ...prev,
+      product_id: id,
+      supply_id: '',
+      description: `${product.name} ${product.size_cm ? `${product.size_cm}cm` : ''} • ${product.variant}`.trim(),
+      unit: 'un',
+      unit_cost: product.cost ?? 0
     }));
   }
 
@@ -405,7 +450,7 @@ export default function QuotesPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-5 mt-4 no-print">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-12 mt-4 no-print">
             <div className="md:col-span-2">
               <div className="label mb-1">Insumo (opcional)</div>
               <select className="input" value={newItem.supply_id} onChange={(e) => onSelectSupply(e.target.value)}>
@@ -417,7 +462,18 @@ export default function QuotesPage() {
                 ))}
               </select>
             </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-3">
+              <div className="label mb-1">Produto (opcional)</div>
+              <select className="input" value={newItem.product_id} onChange={(e) => onSelectProduct(e.target.value)}>
+                <option value="">Selecionar produto</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} {p.size_cm ? `${p.size_cm}cm` : ''} • {p.variant}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-3">
               <div className="label mb-1">Descricao</div>
               <input
                 className="input"
@@ -426,7 +482,7 @@ export default function QuotesPage() {
                 placeholder="Ex: Caixa 18x18x25"
               />
             </div>
-            <div>
+            <div className="md:col-span-1">
               <div className="label mb-1">Unidade</div>
               <input
                 className="input"
@@ -434,7 +490,7 @@ export default function QuotesPage() {
                 onChange={(e) => setNewItem((d) => ({ ...d, unit: e.target.value }))}
               />
             </div>
-            <div>
+            <div className="md:col-span-1">
               <div className="label mb-1">Quantidade</div>
               <input
                 className="input"
@@ -443,7 +499,7 @@ export default function QuotesPage() {
                 onChange={(e) => setNewItem((d) => ({ ...d, qty: toNumber(e.target.value) }))}
               />
             </div>
-            <div>
+            <div className="md:col-span-2">
               <div className="label mb-1">Custo unitario</div>
               <input
                 className="input"

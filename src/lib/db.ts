@@ -328,6 +328,7 @@ export async function listAllPurchaseQuoteItems(): Promise<PurchaseQuoteItem[]> 
 export async function addPurchaseQuoteItem(p: {
   quote_id: string;
   supply_id?: string | null;
+  product_id?: string | null;
   description: string;
   unit: string;
   qty: number;
@@ -336,6 +337,7 @@ export async function addPurchaseQuoteItem(p: {
   const { error } = await supabase.from('purchase_quote_items').insert({
     quote_id: p.quote_id,
     supply_id: p.supply_id ?? null,
+    product_id: p.product_id ?? null,
     description: p.description,
     unit: p.unit,
     qty: p.qty,
