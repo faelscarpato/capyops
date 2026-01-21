@@ -21,6 +21,7 @@ export type Sale = {
   product_id: string;
   quantity: number;
   channel: string;
+  region: string | null;
   sale_price: number;
   shipping_cost: number;
   ml_fee_rate: number | null;
@@ -59,6 +60,7 @@ export type Supply = {
   name: string;
   category: string;
   unit: string;
+  supplier_name: string | null;
   cost_per_unit: number;
   stock_qty: number;
   min_qty: number;
@@ -117,6 +119,32 @@ export type PurchaseQuoteItem = {
   unit: string;
   qty: number;
   unit_cost: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MlQuestion = {
+  id: string;
+  ml_question_id: string | null;
+  item_id: string | null;
+  product_id: string | null;
+  buyer_nickname: string | null;
+  question_text: string;
+  status: string;
+  received_at: string;
+  answered_at: string | null;
+  answer_text: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CompetitorTracking = {
+  id: string;
+  my_product_id: string;
+  competitor_mlb_id: string;
+  last_price: number | null;
+  target_price: number | null;
+  last_checked_at: string | null;
   created_at: string;
   updated_at: string;
 };

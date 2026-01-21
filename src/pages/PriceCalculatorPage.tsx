@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import PageHeader from '../ui/PageHeader';
 import SectionCard from '../ui/SectionCard';
 import { readTaxRates, writeTaxRates } from '../lib/taxRates';
+import { readCompanySettings } from '../lib/companySettings';
 import type { Product } from '../lib/types';
 import { getPackingKitCost, listProducts } from '../lib/db';
 
@@ -16,6 +17,7 @@ function fmtBRL(value: number) {
 
 export default function PriceCalculatorPage() {
   const storedRates = useMemo(() => readTaxRates(), []);
+  const companySettings = readCompanySettings();
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProductId, setSelectedProductId] = useState('');
   const [useInventory, setUseInventory] = useState(false);
@@ -24,9 +26,9 @@ export default function PriceCalculatorPage() {
   const [packagingCost, setPackagingCost] = useState('5');
   const [shippingCost, setShippingCost] = useState('20');
   const [mlFee, setMlFee] = useState(String(storedRates.mlFee));
-  const [cbsRate, setCbsRate] = useState(String(storedRates.cbs));
-  const [ibsRate, setIbsRate] = useState(String(storedRates.ibs));
-  const [isRate, setIsRate] = useState(String(storedRates.is));
+  const cbsRate = useMemo(() => String(companySettings.tax_cbs), [companySettings.tax_cbs]);
+  const ibsRate = useMemo(() => String(companySettings.tax_ibs), [companySettings.tax_ibs]);
+  const isRate = useMemo(() => String(companySettings.tax_is), [companySettings.tax_is]);
   const [marginRate, setMarginRate] = useState(String(storedRates.margin));
 
   useEffect(() => {
@@ -67,21 +69,21 @@ export default function PriceCalculatorPage() {
   useEffect(() => {
     writeTaxRates({
       mlFee: toNumber(mlFee),
-      cbs: toNumber(cbsRate),
-      ibs: toNumber(ibsRate),
-      is: toNumber(isRate),
+      cbs: companySettings.tax_cbs,
+      ibs: companySettings.tax_ibs,
+      is: companySettings.tax_is,
       margin: toNumber(marginRate)
     });
-  }, [mlFee, cbsRate, ibsRate, isRate, marginRate]);
+  }, [mlFee, marginRate, companySettings.tax_cbs, companySettings.tax_ibs, companySettings.tax_is]);
 
   const calc = useMemo(() => {
     const cost = toNumber(productCost);
     const packaging = toNumber(packagingCost);
     const shipping = toNumber(shippingCost);
     const ml = toNumber(mlFee) / 100;
-    const cbs = toNumber(cbsRate) / 100;
-    const ibs = toNumber(ibsRate) / 100;
-    const is = toNumber(isRate) / 100;
+    const cbs = companySettings.tax_cbs / 100;
+    const ibs = companySettings.tax_ibs / 100;
+    const is = companySettings.tax_is / 100;
     const margin = toNumber(marginRate) / 100;
 
     const base = cost + packaging + shipping;
@@ -162,20 +164,23 @@ export default function PriceCalculatorPage() {
           </div>
           <div className="md:col-span-3">
             <div className="label mb-1">Aliquota CBS (%)</div>
-            <input className="input" value={cbsRate} onChange={(e) => setCbsRate(e.target.value)} />
+            <input className="input" value={cbsRate} disabled />
           </div>
           <div className="md:col-span-3">
             <div className="label mb-1">Aliquota IBS (%)</div>
-            <input className="input" value={ibsRate} onChange={(e) => setIbsRate(e.target.value)} />
+            <input className="input" value={ibsRate} disabled />
           </div>
           <div className="md:col-span-3">
             <div className="label mb-1">Aliquota IS (%)</div>
-            <input className="input" value={isRate} onChange={(e) => setIsRate(e.target.value)} />
+            <input className="input" value={isRate} disabled />
           </div>
           <div className="md:col-span-3">
             <div className="label mb-1">Margem desejada (%)</div>
             <input className="input" value={marginRate} onChange={(e) => setMarginRate(e.target.value)} />
           </div>
+        </div>
+        <div className="mt-2 text-xs text-gray-500 dark:text-slate-400">
+          Formula: (Custo + Embalagem + Frete) / (1 - (ML + CBS + IBS + IS + Margem)).
         </div>
       </SectionCard>
 

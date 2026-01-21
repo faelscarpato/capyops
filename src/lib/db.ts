@@ -6,7 +6,9 @@ import type {
   PackingKit,
   PackingKitItem,
   PurchaseQuote,
-  PurchaseQuoteItem
+  PurchaseQuoteItem,
+  MlQuestion,
+  CompetitorTracking
 } from './types';
 
 // === Produtos ===
@@ -36,6 +38,7 @@ export async function applySale(args: {
   product_id: string;
   quantity: number;
   channel: string;
+  region?: string | null;
   sale_price: number;
   shipping_cost?: number;
   ml_fee_rate?: number | null;
@@ -57,7 +60,12 @@ export async function applySale(args: {
     p_sold_at: args.sold_at ?? new Date().toISOString()
   });
   if (error) throw error;
-  return data as string;
+  const saleId = data as string;
+  if (args.region) {
+    const { error: updateError } = await supabase.from('sales').update({ region: args.region }).eq('id', saleId);
+    if (updateError) throw updateError;
+  }
+  return saleId;
 }
 
 // === Tarefas diárias ===
@@ -154,12 +162,14 @@ export type SaleRow = {
   ml_fee_rate: number | null;
   packaging_cost: number | null;
   extra_cost: number | null;
+  product_id: string;
+  region: string | null;
 };
 
 export async function listSalesInRange(startISO: string, endISO: string): Promise<SaleRow[]> {
   const { data, error } = await supabase
     .from('sales')
-    .select('sold_at,quantity,sale_price,shipping_cost,ml_fee_rate,packaging_cost,extra_cost')
+    .select('sold_at,quantity,sale_price,shipping_cost,ml_fee_rate,packaging_cost,extra_cost,product_id,region')
     .gte('sold_at', startISO)
     .lte('sold_at', endISO);
   if (error) throw error;
@@ -192,6 +202,17 @@ export async function updateSupply(id: string, patch: Partial<Supply>): Promise<
 
 export async function listExpenses(): Promise<Expense[]> {
   const { data, error } = await supabase.from('expenses').select('*').order('paid_at', { ascending: false });
+  if (error) throw error;
+  return (data as Expense[]) ?? [];
+}
+
+export async function listExpensesInRange(startISO: string, endISO: string): Promise<Expense[]> {
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('*')
+    .gte('paid_at', startISO)
+    .lte('paid_at', endISO)
+    .order('paid_at', { ascending: true });
   if (error) throw error;
   return (data as Expense[]) ?? [];
 }
@@ -354,4 +375,113 @@ export async function updatePurchaseQuoteItem(id: string, patch: Partial<Purchas
 export async function deletePurchaseQuoteItem(id: string): Promise<void> {
   const { error } = await supabase.from('purchase_quote_items').delete().eq('id', id);
   if (error) throw error;
+}
+
+// === Perguntas ML ===
+
+export async function listMlQuestions(): Promise<MlQuestion[]> {
+  const { data, error } = await supabase
+    .from('ml_questions')
+    .select('*')
+    .order('received_at', { ascending: false });
+  if (error) throw error;
+  return (data as MlQuestion[]) ?? [];
+}
+
+export async function createMlQuestion(payload: {
+  ml_question_id?: string | null;
+  item_id?: string | null;
+  product_id?: string | null;
+  buyer_nickname?: string | null;
+  question_text: string;
+  status?: string;
+  received_at?: string;
+}): Promise<MlQuestion> {
+  const { data, error } = await supabase
+    .from('ml_questions')
+    .insert({
+      ml_question_id: payload.ml_question_id ?? null,
+      item_id: payload.item_id ?? null,
+      product_id: payload.product_id ?? null,
+      buyer_nickname: payload.buyer_nickname ?? null,
+      question_text: payload.question_text,
+      status: payload.status ?? 'pending',
+      received_at: payload.received_at ?? new Date().toISOString()
+    })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as MlQuestion;
+}
+
+export async function answerMlQuestion(id: string, answer_text: string): Promise<void> {
+  const { error } = await supabase
+    .from('ml_questions')
+    .update({
+      status: 'answered',
+      answer_text,
+      answered_at: new Date().toISOString()
+    })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function setMlQuestionStatus(id: string, status: string): Promise<void> {
+  const { error } = await supabase
+    .from('ml_questions')
+    .update({
+      status,
+      answered_at: status === 'answered' ? new Date().toISOString() : null
+    })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+// === Competitor Tracking ===
+
+export async function listCompetitorTracking(): Promise<CompetitorTracking[]> {
+  const { data, error } = await supabase
+    .from('competitor_tracking')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data as CompetitorTracking[]) ?? [];
+}
+
+export async function upsertCompetitorTracking(payload: {
+  my_product_id: string;
+  competitor_mlb_id: string;
+  target_price?: number | null;
+}): Promise<void> {
+  const { error } = await supabase.from('competitor_tracking').upsert(
+    {
+      my_product_id: payload.my_product_id,
+      competitor_mlb_id: payload.competitor_mlb_id,
+      target_price: payload.target_price ?? null
+    },
+    { onConflict: 'user_id,my_product_id,competitor_mlb_id' }
+  );
+  if (error) throw error;
+}
+
+export async function updateCompetitorTracking(id: string, patch: Partial<CompetitorTracking>): Promise<void> {
+  const { error } = await supabase.from('competitor_tracking').update(patch).eq('id', id);
+  if (error) throw error;
+}
+
+// === Estoque preditivo ===
+
+export type SalesSampleRow = {
+  product_id: string;
+  quantity: number;
+  sold_at: string;
+};
+
+export async function listSalesSince(startISO: string): Promise<SalesSampleRow[]> {
+  const { data, error } = await supabase
+    .from('sales')
+    .select('product_id,quantity,sold_at')
+    .gte('sold_at', startISO);
+  if (error) throw error;
+  return (data as SalesSampleRow[]) ?? [];
 }

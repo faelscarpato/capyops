@@ -27,6 +27,7 @@ export default function NewSalePage() {
   const [applyKitStock, setApplyKitStock] = useState(false);
   const [kitCost, setKitCost] = useState<number | null>(null);
   const [channel, setChannel] = useState('mercado_livre_normal');
+  const [region, setRegion] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -93,6 +94,7 @@ export default function NewSalePage() {
         product_id: productId,
         quantity: q,
         channel,
+        region: region || null,
         sale_price: sp,
         shipping_cost: sc,
         packaging_cost: resolvedPackagingCost
@@ -163,6 +165,18 @@ export default function NewSalePage() {
                 <option value="mercado_livre_normal">Mercado Livre (Normal)</option>
                 <option value="mercado_livre_full">Mercado Livre (Full)</option>
                 <option value="outro">Outro</option>
+              </select>
+            </div>
+            <div>
+              <div className="label mb-1">Regiao (opcional)</div>
+              <select value={region} onChange={(e) => setRegion(e.target.value)} className="input">
+                <option value="">Nao informado</option>
+                <option value="Norte">Norte</option>
+                <option value="Nordeste">Nordeste</option>
+                <option value="Centro-Oeste">Centro-Oeste</option>
+                <option value="Sudeste">Sudeste</option>
+                <option value="Sul">Sul</option>
+                <option value="Exterior">Exterior</option>
               </select>
             </div>
 

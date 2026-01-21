@@ -14,7 +14,11 @@ import {
   Boxes,
   CreditCard,
   Layers,
-  FileText
+  FileText,
+  MessageCircle,
+  Crosshair,
+  TrendingUp,
+  Settings
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useThemeMode } from './ThemeModeProvider';
@@ -22,6 +26,10 @@ import { SidebarWidgetProvider } from './SidebarWidgetContext';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/perguntas', label: 'Perguntas', icon: MessageCircle },
+  { to: '/competidores', label: 'Competidores', icon: Crosshair },
+  { to: '/estoque-preditivo', label: 'Estoque preditivo', icon: TrendingUp },
+  { to: '/configuracoes', label: 'Configuracoes', icon: Settings },
   { to: '/estoque', label: 'Estoque', icon: Package },
   { to: '/insumos', label: 'Insumos', icon: Boxes },
   { to: '/despesas', label: 'Despesas', icon: CreditCard },
@@ -45,6 +53,10 @@ export default function AppLayout() {
     const path = location.pathname;
     return {
       '/': path === '/',
+      '/perguntas': path.startsWith('/perguntas'),
+      '/competidores': path.startsWith('/competidores'),
+      '/estoque-preditivo': path.startsWith('/estoque-preditivo'),
+      '/configuracoes': path.startsWith('/configuracoes'),
       '/estoque': path.startsWith('/estoque'),
       '/insumos': path.startsWith('/insumos'),
       '/despesas': path.startsWith('/despesas'),

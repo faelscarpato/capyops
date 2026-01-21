@@ -13,6 +13,10 @@ import SuppliesPage from './pages/SuppliesPage';
 import ExpensesPage from './pages/ExpensesPage';
 import PackingKitsPage from './pages/PackingKitsPage';
 import QuotesPage from './pages/QuotesPage';
+import QuestionsPage from './pages/QuestionsPage';
+import CompetitorTrackingPage from './pages/CompetitorTrackingPage';
+import PredictiveStockPage from './pages/PredictiveStockPage';
+import SettingsPage from './pages/SettingsPage';
 import OpeningSplash from './components/OpeningSplash';
 
 function Protected({ children }: { children: JSX.Element }) {
@@ -47,6 +51,10 @@ export default function App() {
           <Route path="nova-venda" element={<NewSalePage />} />
           <Route path="relatorios" element={<ReportsPage />} />
           <Route path="precificador" element={<PriceCalculatorPage />} />
+          <Route path="perguntas" element={<QuestionsPage />} />
+          <Route path="competidores" element={<CompetitorTrackingPage />} />
+          <Route path="estoque-preditivo" element={<PredictiveStockPage />} />
+          <Route path="configuracoes" element={<SettingsPage />} />
           <Route path="plano-marketing" element={<MarketingPlanPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

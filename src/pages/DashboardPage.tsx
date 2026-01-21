@@ -1,19 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { AlertTriangle, DollarSign, ListChecks, Package } from 'lucide-react';
-import {
-  ensureTodayTasks,
-  getSalesSummaryLastNDays,
-  getTodayTasks,
-  listProducts,
-  listTodaySales,
-  setTaskDone
-} from '../lib/db';
-import { readTaxRates, writeTaxRates } from '../lib/taxRates';
+import { ensureTodayTasks, getSalesSummaryLastNDays, getTodayTasks, listProducts, setTaskDone } from '../lib/db';
+import { readCompanySettings } from '../lib/companySettings';
 import PageHeader from '../ui/PageHeader';
 import MetricCard from '../ui/MetricCard';
 import SectionCard from '../ui/SectionCard';
-import { useSidebarWidget } from '../ui/SidebarWidgetContext';
 
 const DEFAULT_TASKS = [
   'Ver pedidos pagos',
@@ -29,17 +21,10 @@ function fmtBRL(v: number) {
 }
 
 export default function DashboardPage() {
-  const { setSidebarContent } = useSidebarWidget();
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<Array<{ id: string; task_name: string; done: boolean }>>([]);
   const [products, setProducts] = useState<any[]>([]);
-  const [todaySales, setTodaySales] = useState<Array<{ sold_at: string; quantity: number; sale_price: number; product_id: string }>>([]);
-  const [taxRates, setTaxRates] = useState(() => readTaxRates());
-  const [taxInputs, setTaxInputs] = useState(() => ({
-    cbs: String(readTaxRates().cbs),
-    ibs: String(readTaxRates().ibs),
-    is: String(readTaxRates().is)
-  }));
+  const companySettings = readCompanySettings();
   const [day, setDay] = useState<{ gross: number; net_est: number; count: number } | null>(null);
   const [month, setMonth] = useState<{ gross: number; net_est: number; count: number } | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -49,25 +34,16 @@ export default function DashboardPage() {
     setLoading(true);
     try {
       await ensureTodayTasks(DEFAULT_TASKS);
-      const [t, p, s1, s30, salesToday] = await Promise.all([
+      const [t, p, s1, s30] = await Promise.all([
         getTodayTasks(),
         listProducts(),
         getSalesSummaryLastNDays(1),
-        getSalesSummaryLastNDays(30),
-        listTodaySales()
+        getSalesSummaryLastNDays(30)
       ]);
       setTasks(t);
       setProducts(p);
       setDay(s1);
       setMonth(s30);
-      setTodaySales(salesToday);
-      const latestRates = readTaxRates();
-      setTaxRates(latestRates);
-      setTaxInputs({
-        cbs: String(latestRates.cbs),
-        ibs: String(latestRates.ibs),
-        is: String(latestRates.is)
-      });
     } catch (e: any) {
       setErr(e?.message ?? 'Erro ao carregar dados.');
     } finally {
@@ -94,35 +70,12 @@ export default function DashboardPage() {
   const lowStockCritical = lowStock.filter((p: any) => (p.stock ?? 0) <= 0);
   const lowStockWarning = lowStock.filter((p: any) => (p.stock ?? 0) > 0);
 
-  const salesTaxes = useMemo(() => {
-    const rate = (taxRates.cbs + taxRates.ibs + taxRates.is) / 100;
-    return todaySales.map((sale) => {
-      const qty = Number(sale.quantity ?? 0);
-      const price = Number(sale.sale_price ?? 0);
-      const gross = qty * price;
-      const taxes = gross * rate;
-      const product = products.find((p) => p.id === sale.product_id);
-      const label = product ? `${product.name} ${product.size_cm ? `${product.size_cm} cm` : ''}`.trim() : 'Venda';
-      const time = new Date(sale.sold_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      return { id: `${sale.sold_at}-${sale.product_id}`, label, taxes, gross, qty, time };
-    });
-  }, [products, taxRates, todaySales]);
-
-  const totalTaxesToday = useMemo(() => salesTaxes.reduce((sum, sale) => sum + sale.taxes, 0), [salesTaxes]);
-  const effectiveTaxRateValue = useMemo(() => taxRates.cbs + taxRates.ibs + taxRates.is, [taxRates]);
+  const effectiveTaxRateValue = useMemo(
+    () => companySettings.tax_cbs + companySettings.tax_ibs + companySettings.tax_is,
+    [companySettings.tax_cbs, companySettings.tax_ibs, companySettings.tax_is]
+  );
   const effectiveTaxRate = useMemo(() => effectiveTaxRateValue.toFixed(2), [effectiveTaxRateValue]);
   const isHighTaxRate = effectiveTaxRateValue >= 20;
-
-  function handleTaxInputChange(key: 'cbs' | 'ibs' | 'is', value: string) {
-    const nextInputs = { ...taxInputs, [key]: value };
-    setTaxInputs(nextInputs);
-    const nextRates = writeTaxRates({
-      cbs: Number(String(nextInputs.cbs).replace(',', '.')) || 0,
-      ibs: Number(String(nextInputs.ibs).replace(',', '.')) || 0,
-      is: Number(String(nextInputs.is).replace(',', '.')) || 0
-    });
-    setTaxRates(nextRates);
-  }
 
   async function toggleTask(id: string, done: boolean) {
     await setTaskDone(id, done);
@@ -134,121 +87,6 @@ export default function DashboardPage() {
     toggleTask(id, next ?? !current);
   }
 
-  useEffect(() => {
-    setSidebarContent(
-      <div className="space-y-3">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
-            Resumo do dia
-          </div>
-          <div className="mt-1 text-xl font-semibold text-gray-900 dark:text-slate-100">
-            {tasksDone} de {tasksTotal}
-          </div>
-          <div className="text-sm text-gray-500 dark:text-slate-400">Pendentes: {tasksPending.length}</div>
-        </div>
-        <hr className="border-gray-200 dark:border-slate-800" />
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
-            Estoque critico
-          </div>
-          <div className="mt-1 text-xl font-semibold text-gray-900 dark:text-slate-100">{lowStock.length}</div>
-          <div className="text-sm text-gray-500 dark:text-slate-400">Sem estoque: {lowStockCritical.length}</div>
-        </div>
-        <hr className="border-gray-200 dark:border-slate-800" />
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
-            Vendas hoje
-          </div>
-          <div className="mt-1 text-xl font-semibold text-gray-900 dark:text-slate-100">{day ? day.count : '—'}</div>
-          <div className="text-sm text-gray-500 dark:text-slate-400">Receita: {day ? fmtBRL(day.gross) : '—'}</div>
-        </div>
-        <hr className="border-gray-200 dark:border-slate-800" />
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
-            Impostos por venda
-          </div>
-          {salesTaxes.length ? (
-            <div className="mt-2 space-y-2">
-              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400">
-                <span>Total do dia</span>
-                <span className="font-semibold text-gray-900 dark:text-slate-100">{fmtBRL(totalTaxesToday)}</span>
-              </div>
-              <div className="flex items-center justify-between text-[10px] text-gray-400 dark:text-slate-500">
-                <span>Aliquota efetiva</span>
-                <span className={isHighTaxRate ? 'text-red-600 dark:text-red-300 font-semibold' : ''}>
-                  {effectiveTaxRate}%
-                </span>
-              </div>
-              {isHighTaxRate ? (
-                <div className="text-[10px] text-red-600 dark:text-red-300">
-                  Aliquota alta. Revise impostos ou margem.
-                </div>
-              ) : null}
-              <div className="h-px bg-gray-200 dark:bg-slate-800" />
-              <div className="max-h-40 space-y-2 overflow-y-auto pr-1">
-                {salesTaxes.map((sale) => (
-                  <div key={sale.id} className="space-y-0.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-xs text-gray-500 dark:text-slate-400">{sale.label}</div>
-                      <div className="text-xs font-semibold text-gray-900 dark:text-slate-100">{fmtBRL(sale.taxes)}</div>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] text-gray-400 dark:text-slate-500">
-                      <span>
-                        {sale.time} • {sale.qty}x • {fmtBRL(sale.gross)}
-                      </span>
-                      <span>Impostos</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="mt-2 text-xs text-gray-500 dark:text-slate-400">Sem vendas hoje.</div>
-          )}
-        </div>
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
-            Ajustar aliquotas (%)
-          </div>
-          <div className="mt-2 grid grid-cols-3 gap-2">
-            <input
-              className="input"
-              value={taxInputs.cbs}
-              onChange={(e) => handleTaxInputChange('cbs', e.target.value)}
-              inputMode="decimal"
-              placeholder="CBS"
-            />
-            <input
-              className="input"
-              value={taxInputs.ibs}
-              onChange={(e) => handleTaxInputChange('ibs', e.target.value)}
-              inputMode="decimal"
-              placeholder="IBS"
-            />
-            <input
-              className="input"
-              value={taxInputs.is}
-              onChange={(e) => handleTaxInputChange('is', e.target.value)}
-              inputMode="decimal"
-              placeholder="IS"
-            />
-          </div>
-        </div>
-      </div>
-    );
-    return () => setSidebarContent(null);
-  }, [
-    day,
-    lowStock.length,
-    lowStockCritical.length,
-    totalTaxesToday,
-    salesTaxes,
-    setSidebarContent,
-    taxInputs,
-    tasksDone,
-    tasksPending.length,
-    tasksTotal
-  ]);
 
   function handleRefresh() {
     if (!loading) {
@@ -470,6 +308,55 @@ export default function DashboardPage() {
           </SectionCard>
         </div>
       </div>
+
+      <SectionCard title="Resumo do dia">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+              Tarefas
+            </div>
+            <div className="mt-1 text-xl font-semibold text-gray-900 dark:text-slate-100">
+              {tasksDone} de {tasksTotal}
+            </div>
+            <div className="text-sm text-gray-500 dark:text-slate-400">Pendentes: {tasksPending.length}</div>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+              Estoque critico
+            </div>
+            <div className="mt-1 text-xl font-semibold text-gray-900 dark:text-slate-100">{lowStock.length}</div>
+            <div className="text-sm text-gray-500 dark:text-slate-400">Sem estoque: {lowStockCritical.length}</div>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+              Vendas hoje
+            </div>
+            <div className="mt-1 text-xl font-semibold text-gray-900 dark:text-slate-100">{day ? day.count : '—'}</div>
+            <div className="text-sm text-gray-500 dark:text-slate-400">
+              Receita: {day ? fmtBRL(day.gross) : '—'}
+            </div>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+              Impostos do dia
+            </div>
+            <div className="mt-2 space-y-2">
+              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400">
+                <span>Aliquota combinada</span>
+                <span className={isHighTaxRate ? 'text-red-600 dark:text-red-300 font-semibold' : ''}>
+                  {effectiveTaxRate}%
+                </span>
+              </div>
+              <div className="text-[10px] text-gray-400 dark:text-slate-500">
+                CBS {companySettings.tax_cbs}% • IBS {companySettings.tax_ibs}% • IS {companySettings.tax_is}%
+              </div>
+              <div className="text-[10px] text-gray-400 dark:text-slate-500">
+                Valores definidos em Configuracoes.
+              </div>
+            </div>
+          </div>
+        </div>
+      </SectionCard>
 
       <p className="text-xs text-gray-500 dark:text-slate-400">
         Nota: lucro e estimado com taxa ML padrao (17%) quando nao informado na venda.

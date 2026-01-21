@@ -18,6 +18,7 @@ export default function SuppliesPage() {
   const [draft, setDraft] = useState({
     name: '',
     category: '',
+    supplier_name: '',
     unit: 'un',
     cost_per_unit: 0,
     stock_qty: 0,
@@ -54,6 +55,7 @@ export default function SuppliesPage() {
       await upsertSupply({
         name: draft.name.trim(),
         category: draft.category.trim(),
+        supplier_name: draft.supplier_name.trim() || null,
         unit: draft.unit.trim(),
         cost_per_unit: draft.cost_per_unit,
         stock_qty: draft.stock_qty,
@@ -61,7 +63,7 @@ export default function SuppliesPage() {
         is_active: true
       } as any);
       setNewOpen(false);
-      setDraft({ name: '', category: '', unit: 'un', cost_per_unit: 0, stock_qty: 0, min_qty: 0 });
+      setDraft({ name: '', category: '', supplier_name: '', unit: 'un', cost_per_unit: 0, stock_qty: 0, min_qty: 0 });
       await refresh();
     } catch (e: any) {
       setErr(e?.message ?? 'Erro ao criar insumo.');
@@ -135,6 +137,15 @@ export default function SuppliesPage() {
               />
             </div>
             <div>
+              <div className="label mb-1">Fornecedor</div>
+              <input
+                className="input"
+                value={draft.supplier_name}
+                onChange={(e) => setDraft((d) => ({ ...d, supplier_name: e.target.value }))}
+                placeholder="Fornecedor ABC"
+              />
+            </div>
+            <div>
               <div className="label mb-1">Unidade</div>
               <input
                 className="input"
@@ -186,6 +197,7 @@ export default function SuppliesPage() {
                 <th className="px-2 py-2 font-semibold">Insumo</th>
                 <th className="px-2 py-2 font-semibold">Categoria</th>
                 <th className="px-2 py-2 font-semibold">Unidade</th>
+                <th className="px-2 py-2 font-semibold">Fornecedor</th>
                 <th className="px-2 py-2 text-right font-semibold">Custo</th>
                 <th className="px-2 py-2 text-center font-semibold">Estoque</th>
                 <th className="px-2 py-2 text-center font-semibold">Mínimo</th>
@@ -200,6 +212,14 @@ export default function SuppliesPage() {
                   </td>
                   <td className="px-2 py-3">{s.category}</td>
                   <td className="px-2 py-3">{s.unit}</td>
+                  <td className="px-2 py-3">
+                    <input
+                      className="input w-40"
+                      value={s.supplier_name ?? ''}
+                      onChange={(e) => quickUpdate(s.id, { supplier_name: e.target.value })}
+                      placeholder="Fornecedor"
+                    />
+                  </td>
                   <td className="px-2 py-3 text-right">
                     <input
                       className="input w-24 text-right"
@@ -234,7 +254,7 @@ export default function SuppliesPage() {
               ))}
               {!rows.length && !loading ? (
                 <tr>
-                  <td colSpan={7} className="px-2 py-6">
+                  <td colSpan={8} className="px-2 py-6">
                     <div className="text-center text-sm text-gray-500 dark:text-slate-400">
                       Nenhum insumo cadastrado.
                     </div>
