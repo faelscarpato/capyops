@@ -24,6 +24,7 @@ import {
 import { useAuth } from '../lib/auth';
 import { useThemeMode } from './ThemeModeProvider';
 import { SidebarWidgetProvider } from './SidebarWidgetContext';
+import logoCapyops from '../assets/logocapyops.png';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -81,7 +82,7 @@ export default function AppLayout() {
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-gray-200 px-4 py-4 dark:border-slate-800">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-900">
-          <Grid2x2 className="h-4 w-4 text-gray-700 dark:text-slate-200" />
+          <img src={logoCapyops} alt="CapyOps" className="h-7 w-7 rounded-lg object-contain" />
         </div>
         <div>
           <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">CapyOps ML</div>
