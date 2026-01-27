@@ -45,7 +45,7 @@ const OpeningSplash: React.FC<Props> = ({ onComplete }) => {
           <img
             src={logoCapyops}
             alt="CapyOps"
-            className="mb-8 h-50 w-50 rounded-3xl p-2  animate-pulse md:h-70 md:w-70"
+            className="mb-8 h-50 w-50 rounded-3xl p-2  animate-pulse md:h-30 md:w-30"
           />
 
           <div className="relative mt-2 h-1 w-52 overflow-hidden rounded-full bg-white/10">
