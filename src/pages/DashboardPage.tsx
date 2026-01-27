@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { AlertTriangle, DollarSign, ListChecks, Package } from 'lucide-react';
-import { ensureTodayTasks, getSalesSummaryLastNDays, getTodayTasks, listProducts, setTaskDone } from '../lib/db';
+import { ensureTodayTasks, getExceptionRateLastNDays, getSalesSummaryLastNDays, getTodayTasks, listProducts, setTaskDone } from '../lib/db';
 import { readCompanySettings } from '../lib/companySettings';
 import PageHeader from '../ui/PageHeader';
 import MetricCard from '../ui/MetricCard';
@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const companySettings = readCompanySettings();
   const [day, setDay] = useState<{ gross: number; net_est: number; count: number } | null>(null);
   const [month, setMonth] = useState<{ gross: number; net_est: number; count: number } | null>(null);
+  const [exceptionRate, setExceptionRate] = useState<{ rate: number; total: number; problem: number } | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   async function refresh() {
@@ -34,16 +35,18 @@ export default function DashboardPage() {
     setLoading(true);
     try {
       await ensureTodayTasks(DEFAULT_TASKS);
-      const [t, p, s1, s30] = await Promise.all([
+      const [t, p, s1, s30, rate] = await Promise.all([
         getTodayTasks(),
         listProducts(),
         getSalesSummaryLastNDays(1),
-        getSalesSummaryLastNDays(30)
+        getSalesSummaryLastNDays(30),
+        getExceptionRateLastNDays(30)
       ]);
       setTasks(t);
       setProducts(p);
       setDay(s1);
       setMonth(s30);
+      setExceptionRate(rate);
     } catch (e: any) {
       setErr(e?.message ?? 'Erro ao carregar dados.');
     } finally {
@@ -112,7 +115,7 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <div className="space-y-2">
           <MetricCard
             title="Hoje"
@@ -143,6 +146,35 @@ export default function DashboardPage() {
             <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
               Lucro: {month ? fmtBRL(month.net_est) : '—'}
             </span>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <div
+            className={`rounded-xl border p-4 shadow-soft ${
+              (exceptionRate?.rate ?? 0) > 2
+                ? 'border-red-200 bg-gradient-to-b from-red-50 via-white to-white dark:border-red-900/60 dark:from-red-900/30 dark:via-slate-900 dark:to-slate-900'
+                : 'border-gray-200 bg-gradient-to-b from-blue-50 via-white to-white dark:border-slate-800 dark:from-cyan-400/15 dark:via-slate-900 dark:to-slate-900'
+            }`}
+          >
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
+                <span className={`${(exceptionRate?.rate ?? 0) > 2 ? 'text-red-600 dark:text-red-300' : 'text-blue-600 dark:text-cyan-300'}`}>
+                  <Package className="h-4 w-4" />
+                </span>
+                <span className="font-medium uppercase tracking-wide">Taxa de devolucao</span>
+              </div>
+              <div className="text-3xl font-semibold text-gray-900 dark:text-slate-100">
+                {loading ? '—' : `${(exceptionRate?.rate ?? 0).toFixed(1)}%`}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-slate-400">
+                {exceptionRate ? `${exceptionRate.problem} de ${exceptionRate.total} pedidos (30d)` : '—'}
+              </div>
+              {(exceptionRate?.rate ?? 0) > 2 ? (
+                <div className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-900/30 dark:text-red-200">
+                  Alerta: acima de 2%
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
         <div className="space-y-2">

@@ -18,7 +18,8 @@ import {
   MessageCircle,
   Crosshair,
   TrendingUp,
-  Settings
+  Settings,
+  History
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useThemeMode } from './ThemeModeProvider';
@@ -36,6 +37,7 @@ const navItems = [
   { to: '/kits', label: 'Kits', icon: Layers },
   { to: '/orcamentos', label: 'Orcamentos', icon: FileText },
   { to: '/nova-venda', label: 'Nova venda', icon: ReceiptText },
+  { to: '/sales-history', label: 'Historico de vendas', icon: History },
   { to: '/precificador', label: 'Precificador', icon: Calculator },
   { to: '/relatorios', label: 'Relatorios', icon: BarChart3 },
   { to: '/plano-marketing', label: 'Plano Mkt + Operacao', icon: ClipboardCheck }
@@ -63,6 +65,7 @@ export default function AppLayout() {
       '/kits': path.startsWith('/kits'),
       '/orcamentos': path.startsWith('/orcamentos'),
       '/nova-venda': path.startsWith('/nova-venda'),
+      '/sales-history': path.startsWith('/sales-history'),
       '/precificador': path.startsWith('/precificador'),
       '/relatorios': path.startsWith('/relatorios'),
       '/plano-marketing': path.startsWith('/plano-marketing')

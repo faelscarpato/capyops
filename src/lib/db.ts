@@ -1,6 +1,9 @@
 import { supabase } from './supabase';
 import type {
   Product,
+  Sale,
+  SaleException,
+  SaleStatus,
   Supply,
   Expense,
   PackingKit,
@@ -103,7 +106,8 @@ export async function getSalesSummaryLastNDays(days: number): Promise<{ gross: n
   const { data, error } = await supabase
     .from('sales')
     .select('quantity,sale_price,shipping_cost,ml_fee_rate,packaging_cost,extra_cost,product_id')
-    .gte('sold_at', since);
+    .gte('sold_at', since)
+    .or('status.is.null,status.eq.completed');
   if (error) throw error;
 
   let gross = 0;
@@ -149,6 +153,7 @@ export async function listTodaySales(): Promise<TodaySaleRow[]> {
     .select('sold_at,quantity,sale_price,product_id')
     .gte('sold_at', startISO)
     .lte('sold_at', endISO)
+    .or('status.is.null,status.eq.completed')
     .order('sold_at', { ascending: false });
   if (error) throw error;
   return (data as TodaySaleRow[]) ?? [];
@@ -171,9 +176,60 @@ export async function listSalesInRange(startISO: string, endISO: string): Promis
     .from('sales')
     .select('sold_at,quantity,sale_price,shipping_cost,ml_fee_rate,packaging_cost,extra_cost,product_id,region')
     .gte('sold_at', startISO)
-    .lte('sold_at', endISO);
+    .lte('sold_at', endISO)
+    .or('status.is.null,status.eq.completed');
   if (error) throw error;
   return (data as SaleRow[]) ?? [];
+}
+
+export type SalesHistoryRow = Sale & {
+  product: { name: string; variant: string } | null;
+};
+
+export async function getSalesHistory(): Promise<SalesHistoryRow[]> {
+  const { data, error } = await supabase
+    .from('sales')
+    .select('*,product:products(name,variant)')
+    .order('sold_at', { ascending: false });
+  if (error) throw error;
+  return (data as SalesHistoryRow[]) ?? [];
+}
+
+export async function createSaleException(
+  saleId: string,
+  productId: string,
+  qty: number,
+  exceptionData: {
+    type: SaleException['type'];
+    reason?: string | null;
+    restock_inventory?: boolean;
+    refund_amount?: number;
+  }
+): Promise<void> {
+  const { error: insertError } = await supabase.from('sale_exceptions').insert({
+    sale_id: saleId,
+    type: exceptionData.type,
+    reason: exceptionData.reason ?? null,
+    restock_inventory: exceptionData.restock_inventory ?? true,
+    refund_amount: exceptionData.refund_amount ?? 0
+  });
+  if (insertError) throw insertError;
+
+  const statusMap: Record<SaleException['type'], SaleStatus> = {
+    cancellation: 'cancelled',
+    return: 'returned',
+    exchange: 'exchanged'
+  };
+  const { error: statusError } = await supabase.from('sales').update({ status: statusMap[exceptionData.type] }).eq('id', saleId);
+  if (statusError) throw statusError;
+
+  if (exceptionData.restock_inventory ?? true) {
+    const { data: product, error: productError } = await supabase.from('products').select('stock').eq('id', productId).single();
+    if (productError) throw productError;
+    const currentStock = Number(product?.stock ?? 0);
+    const { error: updateError } = await supabase.from('products').update({ stock: currentStock + Number(qty ?? 0) }).eq('id', productId);
+    if (updateError) throw updateError;
+  }
 }
 
 // === Insumos ===
@@ -481,7 +537,31 @@ export async function listSalesSince(startISO: string): Promise<SalesSampleRow[]
   const { data, error } = await supabase
     .from('sales')
     .select('product_id,quantity,sold_at')
-    .gte('sold_at', startISO);
+    .gte('sold_at', startISO)
+    .or('status.is.null,status.eq.completed');
   if (error) throw error;
   return (data as SalesSampleRow[]) ?? [];
+}
+
+export async function getExceptionRateLastNDays(
+  days: number
+): Promise<{ rate: number; total: number; problem: number }> {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const { count: totalCount, error: totalError } = await supabase
+    .from('sales')
+    .select('id', { count: 'exact', head: true })
+    .gte('sold_at', since);
+  if (totalError) throw totalError;
+
+  const { count: problemCount, error: problemError } = await supabase
+    .from('sales')
+    .select('id', { count: 'exact', head: true })
+    .gte('sold_at', since)
+    .in('status', ['cancelled', 'returned', 'exchanged']);
+  if (problemError) throw problemError;
+
+  const total = totalCount ?? 0;
+  const problem = problemCount ?? 0;
+  const rate = total > 0 ? (problem / total) * 100 : 0;
+  return { rate, total, problem };
 }

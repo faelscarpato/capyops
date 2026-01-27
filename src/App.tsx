@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage';
 import InventoryPage from './pages/InventoryPage';
 import NewSalePage from './pages/NewSalePage';
 import ReportsPage from './pages/ReportsPage';
+import SalesHistoryPage from './pages/SalesHistoryPage';
 import MarketingPlanPage from './pages/MarketingPlanPage';
 import PriceCalculatorPage from './pages/PriceCalculatorPage';
 import SuppliesPage from './pages/SuppliesPage';
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="orcamentos" element={<QuotesPage />} />
           <Route path="nova-venda" element={<NewSalePage />} />
           <Route path="relatorios" element={<ReportsPage />} />
+          <Route path="sales-history" element={<SalesHistoryPage />} />
           <Route path="precificador" element={<PriceCalculatorPage />} />
           <Route path="perguntas" element={<QuestionsPage />} />
           <Route path="competidores" element={<CompetitorTrackingPage />} />

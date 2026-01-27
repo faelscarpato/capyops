@@ -16,6 +16,8 @@ export type Product = {
   updated_at: string;
 };
 
+export type SaleStatus = 'completed' | 'cancelled' | 'returned' | 'exchanged';
+
 export type Sale = {
   id: string;
   product_id: string;
@@ -29,8 +31,19 @@ export type Sale = {
   extra_cost: number;
   notes: string | null;
   sold_at: string;
+  status?: SaleStatus;
   created_at: string;
   updated_at: string;
+};
+
+export type SaleException = {
+  id: string;
+  sale_id: string;
+  type: 'cancellation' | 'return' | 'exchange';
+  reason: string | null;
+  restock_inventory: boolean;
+  refund_amount: number;
+  created_at: string;
 };
 
 export type DailyTask = {
