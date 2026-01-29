@@ -11,18 +11,24 @@ import type {
   PurchaseQuote,
   PurchaseQuoteItem,
   MlQuestion,
-  CompetitorTracking
+  CompetitorTracking,
+  MlListing
 } from './types';
 
 // === Produtos ===
 
-export async function listProducts(): Promise<Product[]> {
-  const { data, error } = await supabase
+export async function listProducts(opts?: { includeInactive?: boolean }): Promise<Product[]> {
+  let q = supabase
     .from('products')
     .select('*')
-    .eq('is_active', true)
     .order('name', { ascending: true })
     .order('variant', { ascending: true });
+
+  if (!opts?.includeInactive) {
+    q = q.eq('is_active', true);
+  }
+
+  const { data, error } = await q;
   if (error) throw error;
   return (data as Product[]) ?? [];
 }
@@ -34,6 +40,11 @@ export async function upsertProduct(p: Partial<Product> & { name: string; varian
 
 export async function updateProduct(id: string, patch: Partial<Product>): Promise<void> {
   const { error } = await supabase.from('products').update(patch).eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteProduct(id: string): Promise<void> {
+  const { error } = await supabase.from('products').delete().eq('id', id);
   if (error) throw error;
 }
 
@@ -75,6 +86,12 @@ export async function applySale(args: {
 
 export async function ensureTodayTasks(_defaultTasks: string[]): Promise<void> {
   const { error } = await supabase.rpc('ensure_daily_tasks');
+  if (error) throw error;
+}
+
+export async function createTodayTask(task_name: string): Promise<void> {
+  const task_date = new Date().toISOString().slice(0, 10);
+  const { error } = await supabase.from('daily_tasks').insert({ task_date, task_name, done: false });
   if (error) throw error;
 }
 
@@ -444,6 +461,26 @@ export async function listMlQuestions(): Promise<MlQuestion[]> {
   return (data as MlQuestion[]) ?? [];
 }
 
+export async function getPendingMlQuestionsCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from('ml_questions')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'pending');
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function listPendingMlQuestions(limit = 5): Promise<MlQuestion[]> {
+  const { data, error } = await supabase
+    .from('ml_questions')
+    .select('*')
+    .eq('status', 'pending')
+    .order('received_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data as MlQuestion[]) ?? [];
+}
+
 export async function createMlQuestion(payload: {
   ml_question_id?: string | null;
   item_id?: string | null;
@@ -502,6 +539,35 @@ export async function listCompetitorTracking(): Promise<CompetitorTracking[]> {
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data as CompetitorTracking[]) ?? [];
+}
+
+/**
+ * Alertas simples: considera "em alerta" quando last_price <= target_price.
+ * Sem depender de API externa (por enquanto).
+ */
+export async function getCompetitorAlertCount(): Promise<number> {
+  const { data, error } = await supabase
+    .from('competitor_tracking')
+    .select('id,last_price,target_price')
+    .not('last_price', 'is', null)
+    .not('target_price', 'is', null);
+  if (error) throw error;
+  const rows = (data as any[]) ?? [];
+  return rows.filter((r) => Number(r.last_price) <= Number(r.target_price)).length;
+}
+
+export async function listCompetitorAlerts(limit = 5): Promise<CompetitorTracking[]> {
+  const { data, error } = await supabase
+    .from('competitor_tracking')
+    .select('*')
+    .not('last_price', 'is', null)
+    .not('target_price', 'is', null)
+    .order('updated_at', { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  const rows = (data as CompetitorTracking[]) ?? [];
+  const filtered = rows.filter((r) => Number(r.last_price ?? Infinity) <= Number(r.target_price ?? -Infinity));
+  return filtered.slice(0, limit);
 }
 
 export async function upsertCompetitorTracking(payload: {
@@ -564,4 +630,29 @@ export async function getExceptionRateLastNDays(
   const problem = problemCount ?? 0;
   const rate = total > 0 ? (problem / total) * 100 : 0;
   return { rate, total, problem };
+}
+
+// === Mercado Livre — Anúncios ===
+
+export async function listMlListings(): Promise<MlListing[]> {
+  const { data, error } = await supabase
+    .from('ml_listings')
+    .select('*')
+    .order('listed_at', { ascending: false })
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data as MlListing[]) ?? [];
+}
+
+export async function upsertMlListing(listing: Partial<MlListing> & { ml_listing_id: string }): Promise<void> {
+  const payload: any = { ...listing };
+  // do not send id if empty
+  if (!payload.id) delete payload.id;
+  const { error } = await supabase.from('ml_listings').upsert(payload, { onConflict: 'ml_listing_id' });
+  if (error) throw error;
+}
+
+export async function deleteMlListing(id: string): Promise<void> {
+  const { error } = await supabase.from('ml_listings').delete().eq('id', id);
+  if (error) throw error;
 }

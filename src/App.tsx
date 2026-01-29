@@ -18,6 +18,7 @@ import QuestionsPage from './pages/QuestionsPage';
 import CompetitorTrackingPage from './pages/CompetitorTrackingPage';
 import PredictiveStockPage from './pages/PredictiveStockPage';
 import SettingsPage from './pages/SettingsPage';
+import ListingsPage from './pages/ListingsPage';
 import OpeningSplash from './components/OpeningSplash';
 
 function Protected({ children }: { children: JSX.Element }) {
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="orcamentos" element={<QuotesPage />} />
           <Route path="nova-venda" element={<NewSalePage />} />
           <Route path="relatorios" element={<ReportsPage />} />
+          <Route path="anuncios" element={<ListingsPage />} />
           <Route path="sales-history" element={<SalesHistoryPage />} />
           <Route path="precificador" element={<PriceCalculatorPage />} />
           <Route path="perguntas" element={<QuestionsPage />} />

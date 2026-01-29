@@ -191,11 +191,11 @@ export default function QuotesPage() {
 
     const logo = getLogoData(settings);
     if (logo) {
-      doc.addImage(logo.src, logo.type, marginX, y, 26, 16, undefined, 'FAST');
+      doc.addImage(logo.src, logo.type, marginX, y, 26, 26, undefined, 'FAST');
     }
 
     doc.setFontSize(16);
-    doc.text('Orcamento', marginX + (logo ? 30 : 0), y + 6);
+    doc.text('Orçamento', marginX + (logo ? 30 : 0), y + 6);
     y += logo ? 20 : 12;
 
     doc.setFontSize(10);
@@ -231,7 +231,7 @@ export default function QuotesPage() {
     autoTable(doc, {
       startY: y,
       theme: 'grid',
-      head: [['Item', 'Un', 'Qtd', 'Unitario', 'Total']],
+      head: [['Item', 'Un', 'Qtd', 'Vl. Unit.', 'Total']],
       body: items.map((it) => [
         it.description || 'Item',
         it.unit ?? 'un',
@@ -265,7 +265,7 @@ export default function QuotesPage() {
     }
 
     const safeName = sanitizeFileName(selectedQuote.supplier_name);
-    doc.save(`orcamento-${safeName || 'fornecedor'}.pdf`);
+    doc.save(`orçamento-${safeName || 'fornecedor'}.pdf`);
   }
 
   async function createQuote() {
@@ -516,7 +516,7 @@ export default function QuotesPage() {
             </div>
           }
         >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
               <div className="label mb-1">Fornecedor</div>
               <input

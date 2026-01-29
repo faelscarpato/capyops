@@ -125,7 +125,7 @@ export default function PredictiveStockPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="card p-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
             Itens em risco
@@ -138,12 +138,12 @@ export default function PredictiveStockPage() {
           </div>
           <div className="mt-1 text-2xl font-semibold text-gray-900 dark:text-slate-100">{metrics.length}</div>
         </div>
-        <div className="card p-4">
+        <div className="card p-4 sm:col-span-2 lg:col-span-1">
           <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
             Lead time padrao (dias)
           </div>
           <input
-            className="input mt-2 w-24"
+            className="input mt-2 w-full max-w-24"
             inputMode="decimal"
             value={String(leadTimeDefault)}
             onChange={(e) => {
@@ -163,11 +163,11 @@ export default function PredictiveStockPage() {
             <thead>
               <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
                 <th className="px-2 py-2 font-semibold">Produto</th>
-                <th className="px-2 py-2 text-right font-semibold">Estoque</th>
-                <th className="px-2 py-2 text-right font-semibold">Vendas 30d</th>
-                <th className="px-2 py-2 text-right font-semibold">Media/dia</th>
+                <th className="px-2 py-2 text-right font-semibold hidden sm:table-cell">Estoque</th>
+                <th className="px-2 py-2 text-right font-semibold hidden md:table-cell">Vendas 30d</th>
+                <th className="px-2 py-2 text-right font-semibold hidden lg:table-cell">Media/dia</th>
                 <th className="px-2 py-2 text-right font-semibold">Dias restantes</th>
-                <th className="px-2 py-2 text-right font-semibold">Lead time</th>
+                <th className="px-2 py-2 text-right font-semibold hidden sm:table-cell">Lead time</th>
                 <th className="px-2 py-2 text-center font-semibold">Status</th>
               </tr>
             </thead>
@@ -175,17 +175,24 @@ export default function PredictiveStockPage() {
               {metrics.map((row) => (
                 <tr key={row.product.id} className="border-b border-gray-100 hover:bg-gray-50 dark:border-slate-800 dark:hover:bg-slate-900">
                   <td className="px-2 py-3">
-                    {row.product.name} {row.product.size_cm ? `${row.product.size_cm}cm` : ''} • {row.product.variant}
+                    <div className="flex flex-col">
+                      <span className="font-medium">
+                        {row.product.name} {row.product.size_cm ? `${row.product.size_cm}cm` : ''} • {row.product.variant}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-slate-400 sm:hidden">
+                        Estoque: {row.product.stock} • Lead: {row.leadTime}d
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-2 py-3 text-right">{row.product.stock}</td>
-                  <td className="px-2 py-3 text-right">{fmtNumber(row.total30d)}</td>
-                  <td className="px-2 py-3 text-right">{fmtNumber(row.avgDaily)}</td>
+                  <td className="px-2 py-3 text-right hidden sm:table-cell">{row.product.stock}</td>
+                  <td className="px-2 py-3 text-right hidden md:table-cell">{fmtNumber(row.total30d)}</td>
+                  <td className="px-2 py-3 text-right hidden lg:table-cell">{fmtNumber(row.avgDaily)}</td>
                   <td className="px-2 py-3 text-right">
                     {Number.isFinite(row.daysRemaining) ? fmtNumber(row.daysRemaining) : '—'}
                   </td>
-                  <td className="px-2 py-3 text-right">
+                  <td className="px-2 py-3 text-right hidden sm:table-cell">
                     <input
-                      className="input w-20 text-right"
+                      className="input w-16 text-right text-xs"
                       inputMode="decimal"
                       value={String(row.leadTime)}
                       onChange={(e) => updateLeadTime(row.product.id, e.target.value)}
@@ -194,7 +201,7 @@ export default function PredictiveStockPage() {
                   <td className="px-2 py-3 text-center">
                     {row.isRisk ? (
                       <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-900/30 dark:text-red-200">
-                        Repor agora
+                        Repor
                       </span>
                     ) : (
                       <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-900/30 dark:text-emerald-200">

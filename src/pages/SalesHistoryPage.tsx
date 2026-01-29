@@ -160,7 +160,7 @@ export default function SalesHistoryPage() {
       ) : null}
 
       <SectionCard title="Filtros e busca">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <div className="label mb-1">Busca</div>
             <input
@@ -188,12 +188,12 @@ export default function SalesHistoryPage() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
-                <th className="px-2 py-2 font-semibold">Data</th>
+                <th className="px-2 py-2 font-semibold hidden sm:table-cell">Data</th>
                 <th className="px-2 py-2 font-semibold">Produto</th>
                 <th className="px-2 py-2 text-right font-semibold">Valor</th>
-                <th className="px-2 py-2 font-semibold">Canal</th>
+                <th className="px-2 py-2 font-semibold hidden md:table-cell">Canal</th>
                 <th className="px-2 py-2 text-center font-semibold">Status</th>
-                <th className="px-2 py-2 text-right font-semibold">Acoes</th>
+                <th className="px-2 py-2 text-right font-semibold hidden lg:table-cell">Acoes</th>
               </tr>
             </thead>
             <tbody>
@@ -202,20 +202,24 @@ export default function SalesHistoryPage() {
                 const totalValue = Number(row.sale_price ?? 0) * Number(row.quantity ?? 0);
                 return (
                   <tr key={row.id} className="border-b border-gray-100 dark:border-slate-800">
-                    <td className="px-2 py-3">{formatDate(row.sold_at)}</td>
+                    <td className="px-2 py-3 hidden sm:table-cell">{formatDate(row.sold_at)}</td>
                     <td className="px-2 py-3">
-                      <div className="font-medium">{row.product?.name ?? 'Produto'}</div>
-                      <div className="text-xs text-gray-500 dark:text-slate-400">{row.product?.variant ?? '-'}</div>
+                      <div className="flex flex-col">
+                        <div className="font-medium">{row.product?.name ?? 'Produto'}</div>
+                        <div className="text-xs text-gray-500 dark:text-slate-400">
+                          {row.product?.variant ?? '-'} • <span className="sm:hidden">{formatDate(row.sold_at)}</span>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-2 py-3 text-right">{fmtBRL(totalValue)}</td>
-                    <td className="px-2 py-3">{row.channel}</td>
+                    <td className="px-2 py-3 hidden md:table-cell">{row.channel}</td>
                     <td className="px-2 py-3 text-center">
                       <StatusChip status={row.status} />
                     </td>
-                    <td className="px-2 py-3 text-right">
+                    <td className="px-2 py-3 text-right hidden lg:table-cell">
                       {canHandle ? (
                         <button
-                          className="btn-ghost"
+                          className="btn-ghost text-xs"
                           type="button"
                           onClick={() => {
                             setSelectedSale(row);
@@ -227,7 +231,7 @@ export default function SalesHistoryPage() {
                             setLossNotes('');
                           }}
                         >
-                          Devolver/Cancelar
+                          Devolver
                         </button>
                       ) : (
                         <span className="text-xs text-gray-400 dark:text-slate-500">-</span>
@@ -293,7 +297,7 @@ export default function SalesHistoryPage() {
                   Houve prejuizo financeiro?
                 </label>
                 {hasLoss ? (
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <div className="label mb-1">Valor do prejuizo</div>
                       <input

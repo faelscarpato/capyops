@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageHeader from '../ui/PageHeader';
 import SectionCard from '../ui/SectionCard';
+import { getCompetitorAlertCount, getPendingMlQuestionsCount } from '../lib/db';
 
 export default function MarketingPlanPage() {
+  const navigate = useNavigate();
   const checklistItems = [
     { id: 'pedidos', label: 'Ver pedidos pagos' },
     { id: 'separar', label: 'Separar produtos' },
@@ -18,6 +21,21 @@ export default function MarketingPlanPage() {
     () => Object.fromEntries(checklistItems.map((item) => [item.id, false]))
   );
 
+  const [pendingQuestions, setPendingQuestions] = useState(0);
+  const [competitorAlerts, setCompetitorAlerts] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [q, c] = await Promise.all([getPendingMlQuestionsCount(), getCompetitorAlertCount()]);
+        setPendingQuestions(q);
+        setCompetitorAlerts(c);
+      } catch {
+        // Silencioso: o plano é um painel estático; não queremos quebrar a página por conta disso.
+      }
+    })();
+  }, []);
+
 
   return (
     <div className="space-y-6">
@@ -30,6 +48,52 @@ export default function MarketingPlanPage() {
           </button>
         }
       />
+
+      <SectionCard title="Alertas e atalhos (fora do menu)">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <button
+            type="button"
+            className="card p-4 text-left hover:bg-gray-50 dark:hover:bg-slate-800"
+            onClick={() => navigate('/perguntas')}
+          >
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+              Perguntas ML pendentes
+            </div>
+            <div className="mt-1 text-2xl font-semibold text-gray-900 dark:text-slate-100">{pendingQuestions}</div>
+            <div className="mt-2 text-xs text-gray-500 dark:text-slate-400">
+              Acesso só via alertas ou por aqui.
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="card p-4 text-left hover:bg-gray-50 dark:hover:bg-slate-800"
+            onClick={() => navigate('/competidores')}
+          >
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+              Concorrentes em alerta
+            </div>
+            <div className="mt-1 text-2xl font-semibold text-gray-900 dark:text-slate-100">{competitorAlerts}</div>
+            <div className="mt-2 text-xs text-gray-500 dark:text-slate-400">
+              Alerta quando last_price ≤ alvo.
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="card p-4 text-left hover:bg-gray-50 dark:hover:bg-slate-800"
+            onClick={() => navigate('/anuncios')}
+          >
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+              Catálogo de anúncios
+            </div>
+            <div className="mt-1 text-2xl font-semibold text-gray-900 dark:text-slate-100">Abrir</div>
+            <div className="mt-2 text-xs text-gray-500 dark:text-slate-400">
+              Links, imagens, dias anunciados.
+            </div>
+          </button>
+        </div>
+      </SectionCard>
 
       <SectionCard title="Kit inicial fechado (mix recomendado)">
         <div className="overflow-x-auto">

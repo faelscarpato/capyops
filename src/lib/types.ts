@@ -3,6 +3,11 @@ export type Product = {
   name: string;
   variant: string;
   size_cm: number | null;
+  sku?: string | null;
+  category?: string | null;
+  supplier_name?: string | null;
+  lead_time_days?: number | null;
+  ml_listing_id?: string | null;
   material: string;
   notes: string | null;
   cost: number;
@@ -91,6 +96,20 @@ export type Expense = {
   vendor: string | null;
   notes: string | null;
   paid_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MlListing = {
+  id: string;
+  ml_listing_id: string;
+  title: string;
+  url: string | null;
+  images_count: number | null;
+  description_chars: number | null;
+  has_full_description: boolean | null;
+  listed_at: string | null;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 };

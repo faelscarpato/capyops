@@ -15,8 +15,6 @@ import {
   CreditCard,
   Layers,
   FileText,
-  MessageCircle,
-  Crosshair,
   TrendingUp,
   Settings,
   History
@@ -24,12 +22,12 @@ import {
 import { useAuth } from '../lib/auth';
 import { useThemeMode } from './ThemeModeProvider';
 import { SidebarWidgetProvider } from './SidebarWidgetContext';
+import AlertsPopover from './AlertsPopover';
 import logoCapyops from '../assets/logocapyops.png';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/perguntas', label: 'Perguntas', icon: MessageCircle },
-  { to: '/competidores', label: 'Competidores', icon: Crosshair },
+  { to: '/anuncios', label: 'Anuncios', icon: Grid2x2 },
   { to: '/estoque-preditivo', label: 'Estoque preditivo', icon: TrendingUp },
   { to: '/configuracoes', label: 'Configuracoes', icon: Settings },
   { to: '/estoque', label: 'Estoque', icon: Package },
@@ -56,8 +54,7 @@ export default function AppLayout() {
     const path = location.pathname;
     return {
       '/': path === '/',
-      '/perguntas': path.startsWith('/perguntas'),
-      '/competidores': path.startsWith('/competidores'),
+      '/anuncios': path.startsWith('/anuncios'),
       '/estoque-preditivo': path.startsWith('/estoque-preditivo'),
       '/configuracoes': path.startsWith('/configuracoes'),
       '/estoque': path.startsWith('/estoque'),
@@ -175,6 +172,7 @@ export default function AppLayout() {
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
               <span>{user?.email ?? 'Sessao ativa'}</span>
             </div>
+            <AlertsPopover />
             <button type="button" onClick={onSignOut} className="btn-ghost">
               <LogOut className="h-4 w-4" />
               Sair
@@ -199,7 +197,7 @@ export default function AppLayout() {
             className="absolute inset-0 bg-black/40"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="relative z-50 w-64 max-w-[80%] border-r border-gray-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900">
+          <aside className="relative z-50 flex h-full w-64 max-w-[80%] flex-col overflow-y-auto border-r border-gray-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900">
             {drawerContent}
           </aside>
         </div>

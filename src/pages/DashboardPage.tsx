@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { ChangeEvent } from 'react';
-import { AlertTriangle, DollarSign, ListChecks, Package } from 'lucide-react';
-import { ensureTodayTasks, getExceptionRateLastNDays, getSalesSummaryLastNDays, getTodayTasks, listProducts, setTaskDone } from '../lib/db';
+import { AlertTriangle, BarChart3, DollarSign, Package, Truck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import {
+  createTodayTask,
+  ensureTodayTasks,
+  getExceptionRateLastNDays,
+  getSalesSummaryLastNDays,
+  getTodayTasks,
+  listProducts,
+  setTaskDone
+} from '../lib/db';
 import { readCompanySettings } from '../lib/companySettings';
 import PageHeader from '../ui/PageHeader';
-import MetricCard from '../ui/MetricCard';
 import SectionCard from '../ui/SectionCard';
+import KpiCard from '../ui/KpiCard';
+import TodayTasksPanel from '../components/tasks/TodayTasksPanel';
 
 const DEFAULT_TASKS = [
   'Ver pedidos pagos',
@@ -21,6 +30,7 @@ function fmtBRL(v: number) {
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<Array<{ id: string; task_name: string; done: boolean }>>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -64,14 +74,12 @@ export default function DashboardPage() {
       .sort((a: any, b: any) => (a.stock ?? 0) - (b.stock ?? 0));
   }, [products]);
 
-  const tasksDone = tasks.filter((t) => t.done).length;
-  const tasksTotal = tasks.length;
-  const tasksPending = tasks.filter((t) => !t.done);
-  const tasksCompleted = tasks.filter((t) => t.done);
-  const progressPct = tasksTotal ? Math.round((tasksDone / tasksTotal) * 100) : 0;
-
   const lowStockCritical = lowStock.filter((p: any) => (p.stock ?? 0) <= 0);
   const lowStockWarning = lowStock.filter((p: any) => (p.stock ?? 0) > 0);
+
+  const tasksDone = useMemo(() => tasks.filter(t => t.done).length, [tasks]);
+  const tasksTotal = useMemo(() => tasks.length, [tasks]);
+  const tasksPending = useMemo(() => tasks.filter(t => !t.done), [tasks]);
 
   const effectiveTaxRateValue = useMemo(
     () => companySettings.tax_cbs + companySettings.tax_ibs + companySettings.tax_is,
@@ -85,9 +93,10 @@ export default function DashboardPage() {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done } : t)));
   }
 
-  function handleTaskToggle(id: string, current: boolean, e: ChangeEvent<HTMLInputElement>) {
-    const next = e.currentTarget.checked;
-    toggleTask(id, next ?? !current);
+  async function handleCreateTask(taskName: string) {
+    await createTodayTask(taskName);
+    const t = await getTodayTasks();
+    setTasks(t);
   }
 
 
@@ -115,164 +124,89 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <div className="space-y-2">
-          <MetricCard
-            title="Hoje"
-            value={loading ? '—' : day ? fmtBRL(day.gross) : '—'}
-            subtitle={`Lucro estimado: ${day ? fmtBRL(day.net_est) : '—'} • Vendas: ${day ? day.count : '—'}`}
-            icon={<DollarSign className="h-4 w-4" />}
-          />
-          <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-              Vendas: {day ? day.count : '—'}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <KpiCard
+          title="Lucro hoje"
+          value={loading ? '—' : day ? fmtBRL(day.net_est) : '—'}
+          subtitle={
+            <span className="text-xs">
+              Bruto: {day ? fmtBRL(day.gross) : '—'} • Vendas: {day ? day.count : '—'}
             </span>
-            <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-              Lucro: {day ? fmtBRL(day.net_est) : '—'}
+          }
+          icon={<DollarSign className="h-4 w-4" />}
+          onClick={() => navigate('/relatorios')}
+          hrefLabel="Abrir relatórios"
+        />
+
+        <KpiCard
+          title="Vendas hoje"
+          value={loading ? '—' : day ? String(day.count) : '—'}
+          subtitle={<span className="text-xs">Clique para registrar uma nova venda e baixar estoque.</span>}
+          icon={<BarChart3 className="h-4 w-4" />}
+          onClick={() => navigate('/nova-venda')}
+          hrefLabel="Nova venda"
+        />
+
+        <KpiCard
+          title="Estoque crítico"
+          value={loading ? '—' : String(lowStock.length)}
+          subtitle={
+            <span className="text-xs">
+              Sem estoque: {lowStockCritical.length} • Baixo: {lowStockWarning.length}
             </span>
-          </div>
-        </div>
-        <div className="space-y-2">
-          <MetricCard
-            title="Ultimos 30 dias"
-            value={loading ? '—' : month ? fmtBRL(month.gross) : '—'}
-            subtitle={`Lucro estimado: ${month ? fmtBRL(month.net_est) : '—'} • Vendas: ${month ? month.count : '—'}`}
-            icon={<DollarSign className="h-4 w-4" />}
-          />
-          <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-              Vendas: {month ? month.count : '—'}
+          }
+          icon={<Package className="h-4 w-4" />}
+          onClick={() => navigate('/estoque?f=critical')}
+          hrefLabel="Abrir estoque"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <KpiCard
+          title="Últimos 30 dias"
+          value={loading ? '—' : month ? fmtBRL(month.gross) : '—'}
+          subtitle={
+            <span className="text-xs">
+              Lucro estimado: {month ? fmtBRL(month.net_est) : '—'} • Vendas: {month ? month.count : '—'}
             </span>
-            <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-              Lucro: {month ? fmtBRL(month.net_est) : '—'}
-            </span>
-          </div>
-        </div>
-        <div className="space-y-2">
-          <div
-            className={`rounded-xl border p-4 shadow-soft ${
-              (exceptionRate?.rate ?? 0) > 2
-                ? 'border-red-200 bg-gradient-to-b from-red-50 via-white to-white dark:border-red-900/60 dark:from-red-900/30 dark:via-slate-900 dark:to-slate-900'
-                : 'border-gray-200 bg-gradient-to-b from-blue-50 via-white to-white dark:border-slate-800 dark:from-cyan-400/15 dark:via-slate-900 dark:to-slate-900'
-            }`}
-          >
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
-                <span className={`${(exceptionRate?.rate ?? 0) > 2 ? 'text-red-600 dark:text-red-300' : 'text-blue-600 dark:text-cyan-300'}`}>
-                  <Package className="h-4 w-4" />
-                </span>
-                <span className="font-medium uppercase tracking-wide">Taxa de devolucao</span>
-              </div>
-              <div className="text-3xl font-semibold text-gray-900 dark:text-slate-100">
-                {loading ? '—' : `${(exceptionRate?.rate ?? 0).toFixed(1)}%`}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-slate-400">
-                {exceptionRate ? `${exceptionRate.problem} de ${exceptionRate.total} pedidos (30d)` : '—'}
-              </div>
-              {(exceptionRate?.rate ?? 0) > 2 ? (
-                <div className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-900/30 dark:text-red-200">
-                  Alerta: acima de 2%
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-        <div className="space-y-2">
-          <MetricCard
-            title="Estoque critico"
-            value={loading ? '—' : String(lowStock.length)}
-            subtitle="Itens com estoque menor ou igual ao minimo"
-            icon={<Package className="h-4 w-4" />}
-          />
-          <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-900/30 dark:text-red-200">
-              Sem estoque: {lowStockCritical.length}
-            </span>
-            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-700 dark:border-amber-900/60 dark:bg-amber-900/30 dark:text-amber-200">
-              Baixo: {lowStockWarning.length}
-            </span>
-          </div>
-        </div>
+          }
+          icon={<DollarSign className="h-4 w-4" />}
+          onClick={() => navigate('/relatorios')}
+          hrefLabel="Abrir relatórios"
+        />
+
+        <KpiCard
+          title="Taxa de devolução"
+          value={loading ? '—' : `${(exceptionRate?.rate ?? 0).toFixed(1)}%`}
+          subtitle={<span className="text-xs">{exceptionRate ? `${exceptionRate.problem} de ${exceptionRate.total} pedidos (30d)` : '—'}</span>}
+          icon={<Truck className="h-4 w-4" />}
+          trend={
+            (exceptionRate?.rate ?? 0) > 2
+              ? { value: 'ALERTA > 2%', tone: 'negative' }
+              : { value: 'OK', tone: 'positive' }
+          }
+        />
+
+        <KpiCard
+          title="Impostos (CBS+IBS+IS)"
+          value={`${effectiveTaxRate}%`}
+          subtitle={<span className="text-xs">Ajuste taxas e margens padrão nas configurações.</span>}
+          icon={<AlertTriangle className="h-4 w-4" />}
+          trend={isHighTaxRate ? { value: 'ALTO', tone: 'negative' } : { value: 'OK', tone: 'neutral' }}
+          onClick={() => navigate('/configuracoes')}
+          hrefLabel="Configurações"
+        />
       </div>
 
       <div className="grid gap-4 md:grid-cols-12">
         <div className="md:col-span-8">
-          <SectionCard
-            title="Tarefas de hoje"
-            action={
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                  {tasksDone}/{tasksTotal} concluidas
-                </span>
-                <ListChecks className="h-4 w-4 text-gray-500 dark:text-slate-400" />
-              </div>
-            }
-          >
-            <div className="space-y-4">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
-                  Progresso do dia
-                </div>
-                <div className="mt-2 h-2 w-full rounded-full bg-gray-200 dark:bg-slate-800">
-                  <div
-                    className="h-2 rounded-full bg-cyan-500 transition-all"
-                    style={{ width: `${progressPct}%` }}
-                  />
-                </div>
-              </div>
-              <div>
-                {loading ? (
-                  <div className="space-y-2 animate-pulse">
-                    <div className="h-8 rounded-lg bg-gray-200 dark:bg-slate-800" />
-                    <div className="h-8 rounded-lg bg-gray-200 dark:bg-slate-800" />
-                    <div className="h-8 rounded-lg bg-gray-200 dark:bg-slate-800" />
-                  </div>
-                ) : tasks.length ? (
-                  <div className="space-y-4">
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
-                        Pendentes ({tasksPending.length})
-                      </div>
-                      <ul className="mt-2 space-y-2">
-                        {tasksPending.map((t) => (
-                          <li key={t.id} className="flex items-center gap-3">
-                            <input
-                              type="checkbox"
-                              checked={t.done}
-                              onChange={(e) => handleTaskToggle(t.id, t.done, e)}
-                              className="h-4 w-4 rounded border-gray-300 text-cyan-500 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900"
-                            />
-                            <span className="text-sm text-gray-800 dark:text-slate-200">{t.task_name}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
-                        Concluidas ({tasksCompleted.length})
-                      </div>
-                      <ul className="mt-2 space-y-2">
-                        {tasksCompleted.map((t) => (
-                          <li key={t.id} className="flex items-center gap-3">
-                            <input
-                              type="checkbox"
-                              checked={t.done}
-                              onChange={(e) => handleTaskToggle(t.id, t.done, e)}
-                              className="h-4 w-4 rounded border-gray-300 text-cyan-500 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900"
-                            />
-                            <span className="text-sm text-gray-500 line-through dark:text-slate-400">
-                              {t.task_name}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-500 dark:text-slate-400">Nenhuma tarefa carregada.</div>
-                )}
-              </div>
-            </div>
+          <SectionCard title="Tarefas do dia">
+            <TodayTasksPanel
+              loading={loading}
+              tasks={tasks}
+              onToggle={toggleTask}
+              onCreate={handleCreateTask}
+            />
           </SectionCard>
         </div>
         <div className="md:col-span-4">

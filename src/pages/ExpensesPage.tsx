@@ -89,7 +89,7 @@ export default function ExpensesPage() {
           </div>
         }
       >
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="label mb-1">Categoria</div>
             <input
@@ -126,7 +126,7 @@ export default function ExpensesPage() {
               placeholder="nome da loja"
             />
           </div>
-          <div className="md:col-span-4">
+          <div className="sm:col-span-2 lg:col-span-4">
             <div className="label mb-1">Observação</div>
             <input
               className="input"
@@ -145,25 +145,30 @@ export default function ExpensesPage() {
               <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
                 <th className="px-2 py-2 font-semibold">Categoria</th>
                 <th className="px-2 py-2 text-right font-semibold">Valor</th>
-                <th className="px-2 py-2 font-semibold">Data</th>
-                <th className="px-2 py-2 font-semibold">Pagamento</th>
-                <th className="px-2 py-2 font-semibold">Fornecedor</th>
-                <th className="px-2 py-2 font-semibold">Observação</th>
+                <th className="px-2 py-2 font-semibold hidden sm:table-cell">Data</th>
+                <th className="px-2 py-2 font-semibold hidden md:table-cell">Pagamento</th>
+                <th className="px-2 py-2 font-semibold hidden lg:table-cell">Fornecedor</th>
+                <th className="px-2 py-2 font-semibold hidden lg:table-cell">Observação</th>
               </tr>
             </thead>
             <tbody>
               {expenses.map((ex) => (
                 <tr key={ex.id} className="border-b border-gray-100 hover:bg-gray-50 dark:border-slate-800 dark:hover:bg-slate-900">
                   <td className="px-2 py-3">
-                    <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">{ex.category}</div>
+                    <div className="flex flex-col">
+                      <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">{ex.category}</div>
+                      <div className="text-xs text-gray-500 dark:text-slate-400 sm:hidden">
+                        {new Date(ex.paid_at).toLocaleDateString()} • {ex.payment_method || 'N/A'}
+                      </div>
+                    </div>
                   </td>
                   <td className="px-2 py-3 text-right">
                     {ex.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </td>
-                  <td className="px-2 py-3">{new Date(ex.paid_at).toLocaleDateString()}</td>
-                  <td className="px-2 py-3">{ex.payment_method || '—'}</td>
-                  <td className="px-2 py-3">{ex.vendor || '—'}</td>
-                  <td className="px-2 py-3">{ex.notes || '—'}</td>
+                  <td className="px-2 py-3 hidden sm:table-cell">{new Date(ex.paid_at).toLocaleDateString()}</td>
+                  <td className="px-2 py-3 hidden md:table-cell">{ex.payment_method || '—'}</td>
+                  <td className="px-2 py-3 hidden lg:table-cell">{ex.vendor || '—'}</td>
+                  <td className="px-2 py-3 hidden lg:table-cell">{ex.notes || '—'}</td>
                 </tr>
               ))}
               {!expenses.length && !loading ? (

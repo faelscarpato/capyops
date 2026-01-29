@@ -1,97 +1,171 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { PackingKit, Product } from '../lib/types';
-import { listPackingKits, listProducts, upsertProduct, updateProduct } from '../lib/db';
+import { useLocation } from 'react-router-dom';
 import PageHeader from '../ui/PageHeader';
 import SectionCard from '../ui/SectionCard';
-import StatusChip from '../ui/StatusChip';
+import { deleteProduct, listPackingKits, listProducts, upsertProduct, updateProduct } from '../lib/db';
+import type { PackingKit, Product } from '../lib/types';
+import ProductTable from '../features/inventory/ProductTable';
+import ProductForm, { type ProductDraft } from '../features/inventory/ProductForm';
 
-function toNumber(v: string): number {
-  const n = Number(String(v).replace(',', '.'));
-  return Number.isFinite(n) ? n : 0;
+const STORAGE_KEY = 'capyops_inventory_filters_v1';
+
+type Filters = {
+  q: string;
+  category: string;
+  includeInactive: boolean;
+  onlyCritical: boolean;
+};
+
+const defaultFilters: Filters = {
+  q: '',
+  category: 'all',
+  includeInactive: true,
+  onlyCritical: false
+};
+
+const emptyDraft: ProductDraft = {
+  name: '',
+  variant: 'branco',
+  size_cm: 20,
+  sku: null,
+  category: null,
+  supplier_name: null,
+  lead_time_days: null,
+  ml_listing_id: null,
+  material: 'Resina',
+  notes: null,
+  cost: 0,
+  price: 0,
+  packing_kit_id: null,
+  packaging_cost: null,
+  stock: 0,
+  min_stock: 2,
+  is_active: true
+};
+
+function safeParse<T>(raw: string | null): T | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
 }
 
 export default function InventoryPage() {
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
-  const [kits, setKits] = useState<PackingKit[]>([]);
-  const [err, setErr] = useState<string | null>(null);
-  const [newOpen, setNewOpen] = useState(false);
+  const [packingKits, setPackingKits] = useState<PackingKit[]>([]);
+  const [filters, setFilters] = useState<Filters>(defaultFilters);
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [draft, setDraft] = useState<ProductDraft>(emptyDraft);
 
-  const [draft, setDraft] = useState({
-    name: '',
-    variant: 'branco',
-    size_cm: 20,
-    cost: 0,
-    price: 0,
-    stock: 0,
-    min_stock: 2,
-    packing_kit_id: ''
-  });
+  useEffect(() => {
+    // filtros persistentes + query param (atalho vindo do dashboard)
+    const saved = safeParse<Partial<Filters>>(window.localStorage.getItem(STORAGE_KEY));
+    const params = new URLSearchParams(location.search);
+    const forceCritical = params.get('f') === 'critical';
+    setFilters({
+      ...defaultFilters,
+      ...(saved || {}),
+      ...(forceCritical ? { onlyCritical: true } : {})
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
+    } catch {
+      // ignore
+    }
+  }, [filters]);
 
   async function refresh() {
-    setErr(null);
-    setLoading(true);
     try {
-      const p = await listProducts();
-      setProducts(p);
+      setLoading(true);
+      setError(null);
+      const [ps, ks] = await Promise.all([listProducts({ includeInactive: true }), listPackingKits()]);
+      setProducts(ps);
+      setPackingKits(ks);
     } catch (e: any) {
-      setErr(e?.message ?? 'Erro ao carregar produtos.');
+      setError(e?.message ?? 'Erro ao carregar estoque');
     } finally {
       setLoading(false);
     }
   }
 
-  async function refreshKits() {
-    try {
-      const k = await listPackingKits();
-      setKits(k);
-    } catch {
-      setKits([]);
-    }
-  }
-
   useEffect(() => {
     refresh();
-    refreshKits();
   }, []);
 
-  const rows = useMemo(() => {
-    return products.map((p) => ({
-      ...p,
-      status: (p.stock ?? 0) <= (p.min_stock ?? 1) ? 'COMPRAR' : 'OK'
-    }));
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of products) {
+      if (p.category && p.category.trim()) set.add(p.category.trim());
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [products]);
 
-  async function onCreate() {
-    setErr(null);
+  const filtered = useMemo(() => {
+    const q = filters.q.trim().toLowerCase();
+    return products
+      .filter((p) => (filters.includeInactive ? true : p.is_active))
+      .filter((p) => (filters.category === 'all' ? true : (p.category ?? '').toLowerCase() === filters.category))
+      .filter((p) => (filters.onlyCritical ? p.stock <= (p.min_stock ?? 0) : true))
+      .filter((p) => {
+        if (!q) return true;
+        const hay = `${p.name} ${p.variant} ${p.size_cm ?? ''} ${p.sku ?? ''} ${p.ml_listing_id ?? ''}`.toLowerCase();
+        return hay.includes(q);
+      })
+      .sort((a, b) => a.name.localeCompare(b.name) || a.variant.localeCompare(b.variant));
+  }, [products, filters]);
+
+  function beginCreate() {
+    setEditing(null);
+    setDraft(emptyDraft);
+  }
+
+  function beginEdit(p: Product) {
+    setEditing(p);
+    setDraft({ ...p });
+  }
+
+  async function handleSubmit() {
     try {
-      await upsertProduct({
-        name: draft.name.trim(),
-        variant: draft.variant.trim(),
-        size_cm: draft.size_cm,
-        material: 'resina_marmorizada',
-        cost: draft.cost,
-        price: draft.price,
-        stock: draft.stock,
-        min_stock: draft.min_stock,
-        packing_kit_id: draft.packing_kit_id ? draft.packing_kit_id : null,
-        is_active: true
-      } as any);
-      setNewOpen(false);
-      setDraft({ name: '', variant: 'branco', size_cm: 20, cost: 0, price: 0, stock: 0, min_stock: 2, packing_kit_id: '' });
+      setSaving(true);
+      setError(null);
+      await upsertProduct(draft as any);
       await refresh();
+      beginCreate();
     } catch (e: any) {
-      setErr(e?.message ?? 'Erro ao criar produto.');
+      setError(e?.message ?? 'Erro ao salvar produto');
+    } finally {
+      setSaving(false);
     }
   }
 
-  async function quickUpdate(id: string, patch: Partial<Product>) {
-    setErr(null);
+  async function handleToggleActive(p: Product) {
     try {
-      await updateProduct(id, patch);
-      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } as Product : p)));
+      await updateProduct(p.id, { is_active: !p.is_active });
+      await refresh();
     } catch (e: any) {
-      setErr(e?.message ?? 'Erro ao atualizar produto.');
+      setError(e?.message ?? 'Erro ao atualizar produto');
+    }
+  }
+
+  async function handleDelete(p: Product) {
+    const ok = window.confirm(`Excluir "${p.name} • ${p.variant}"? Isso não pode ser desfeito.`);
+    if (!ok) return;
+    try {
+      await deleteProduct(p.id);
+      await refresh();
+      if (editing?.id === p.id) beginCreate();
+    } catch (e: any) {
+      setError(e?.message ?? 'Erro ao excluir produto');
     }
   }
 
@@ -99,221 +173,104 @@ export default function InventoryPage() {
     <div className="space-y-6">
       <PageHeader
         title="Estoque"
-        subtitle="Controle de SKUs, custo, preco e nivel de reposicao."
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <button className="btn-ghost" onClick={refresh} disabled={loading}>
-              {loading ? 'Atualizando...' : 'Atualizar'}
-            </button>
-            <button className="btn-primary" onClick={() => setNewOpen(true)}>
-              Novo produto
-            </button>
-          </div>
-        }
+        subtitle="Lista + formulário separados, filtros persistentes e foco no que vira ação (crítico / inativo / categoria)."
       />
 
-      {err ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-900/30 dark:text-red-200">
-          {err}
-        </div>
-      ) : null}
+      <SectionCard
+        title="Filtros"
+        action={
+          <button className="btn-primary" onClick={beginCreate}>
+            Novo produto
+          </button>
+        }
+      >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
+          <div className="md:col-span-5">
+            <label className="space-y-1">
+              <span className="text-xs font-medium text-gray-700 dark:text-slate-300">Buscar</span>
+              <input
+                value={filters.q}
+                onChange={(e) => setFilters((f) => ({ ...f, q: e.currentTarget.value }))}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                placeholder="Nome, variante, SKU, ML..."
+              />
+            </label>
+          </div>
 
-      {newOpen ? (
-        <SectionCard
-          title="Cadastrar novo produto"
-          action={
-            <div className="flex flex-wrap gap-2">
-              <button className="btn-primary" onClick={onCreate}>
-                Salvar
-              </button>
-              <button className="btn-ghost" onClick={() => setNewOpen(false)}>
-                Cancelar
-              </button>
-            </div>
-          }
-        >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div>
-              <div className="label mb-1">Nome</div>
-              <input
-                className="input"
-                value={draft.name}
-                onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-                placeholder="Sao Miguel Arcanjo Gargano"
-              />
-            </div>
-            <div>
-              <div className="label mb-1">Variante</div>
-              <input
-                className="input"
-                value={draft.variant}
-                onChange={(e) => setDraft((d) => ({ ...d, variant: e.target.value }))}
-                placeholder="branco / sombreado"
-              />
-            </div>
-            <div>
-              <div className="label mb-1">Tamanho (cm)</div>
-              <input
-                className="input"
-                value={String(draft.size_cm)}
-                onChange={(e) => setDraft((d) => ({ ...d, size_cm: toNumber(e.target.value) }))}
-                inputMode="numeric"
-              />
-            </div>
-            <div>
-              <div className="label mb-1">Custo</div>
-              <input
-                className="input"
-                inputMode="decimal"
-                value={String(draft.cost)}
-                onChange={(e) => setDraft((d) => ({ ...d, cost: toNumber(e.target.value) }))}
-              />
-            </div>
-            <div>
-              <div className="label mb-1">Preco base</div>
-              <input
-                className="input"
-                inputMode="decimal"
-                value={String(draft.price)}
-                onChange={(e) => setDraft((d) => ({ ...d, price: toNumber(e.target.value) }))}
-              />
-            </div>
-            <div>
-              <div className="label mb-1">Estoque</div>
-              <input
-                className="input"
-                value={String(draft.stock)}
-                onChange={(e) =>
-                  setDraft((d) => ({ ...d, stock: Math.max(0, Math.trunc(toNumber(e.target.value))) }))
-                }
-                inputMode="numeric"
-              />
-            </div>
-            <div>
-              <div className="label mb-1">Estoque minimo</div>
-              <input
-                className="input"
-                value={String(draft.min_stock)}
-                onChange={(e) =>
-                  setDraft((d) => ({
-                    ...d,
-                    min_stock: Math.max(0, Math.trunc(toNumber(e.target.value)))
-                  }))
-                }
-                inputMode="numeric"
-              />
-            </div>
-            <div>
-              <div className="label mb-1">Kit de embalagem</div>
+          <div className="md:col-span-3">
+            <label className="space-y-1">
+              <span className="text-xs font-medium text-gray-700 dark:text-slate-300">Categoria</span>
               <select
-                className="input"
-                value={draft.packing_kit_id}
-                onChange={(e) => setDraft((d) => ({ ...d, packing_kit_id: e.target.value }))}
+                value={filters.category}
+                onChange={(e) => setFilters((f) => ({ ...f, category: e.currentTarget.value }))}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               >
-                <option value="">Sem kit</option>
-                {kits.map((k) => (
-                  <option key={k.id} value={k.id}>
-                    {k.name}
+                <option value="all">Todas</option>
+                {categories.map((c) => (
+                  <option key={c} value={c.toLowerCase()}>
+                    {c}
                   </option>
                 ))}
               </select>
-            </div>
+            </label>
           </div>
-        </SectionCard>
-      ) : null}
 
-      <SectionCard title="Produtos">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
-                <th className="px-2 py-2 font-semibold">Produto</th>
-                <th className="px-2 py-2 font-semibold">Tamanho</th>
-                <th className="px-2 py-2 font-semibold">Kit</th>
-                <th className="px-2 py-2 text-right font-semibold">Custo</th>
-                <th className="px-2 py-2 text-right font-semibold">Preco</th>
-                <th className="px-2 py-2 text-center font-semibold">Estoque</th>
-                <th className="px-2 py-2 text-center font-semibold">Minimo</th>
-                <th className="px-2 py-2 text-center font-semibold">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((p) => (
-                <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50 dark:border-slate-800 dark:hover:bg-slate-900">
-                  <td className="px-2 py-3">
-                    <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">{p.name}</div>
-                    <div className="text-xs text-gray-500 dark:text-slate-400">{p.variant}</div>
-                  </td>
-                  <td className="px-2 py-3">{p.size_cm ? `${p.size_cm} cm` : '—'}</td>
-                  <td className="px-2 py-3">
-                    <select
-                      className="input w-44"
-                      value={p.packing_kit_id ?? ''}
-                      onChange={(e) => quickUpdate(p.id, { packing_kit_id: e.target.value || null })}
-                    >
-                      <option value="">Sem kit</option>
-                      {kits.map((k) => (
-                        <option key={k.id} value={k.id}>
-                          {k.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-2 py-3 text-right">
-                    <input
-                      className="input w-24 text-right"
-                      value={String(p.cost)}
-                      onChange={(e) => quickUpdate(p.id, { cost: toNumber(e.target.value) })}
-                    />
-                  </td>
-                  <td className="px-2 py-3 text-right">
-                    <input
-                      className="input w-24 text-right"
-                      value={String(p.price)}
-                      onChange={(e) => quickUpdate(p.id, { price: toNumber(e.target.value) })}
-                    />
-                  </td>
-                  <td className="px-2 py-3 text-center">
-                    <input
-                      className="input w-20 text-center"
-                      value={String(p.stock)}
-                      onChange={(e) =>
-                        quickUpdate(p.id, { stock: Math.max(0, Math.trunc(toNumber(e.target.value))) })
-                      }
-                      inputMode="numeric"
-                    />
-                  </td>
-                  <td className="px-2 py-3 text-center">
-                    <input
-                      className="input w-20 text-center"
-                      value={String(p.min_stock)}
-                      onChange={(e) =>
-                        quickUpdate(p.id, { min_stock: Math.max(0, Math.trunc(toNumber(e.target.value))) })
-                      }
-                      inputMode="numeric"
-                    />
-                  </td>
-                  <td className="px-2 py-3 text-center">
-                    <StatusChip status={p.status} />
-                  </td>
-                </tr>
-              ))}
-              {!rows.length && !loading ? (
-                <tr>
-                  <td colSpan={8} className="px-2 py-6">
-                    <div className="text-center text-sm text-gray-500 dark:text-slate-400">
-                      Nenhum produto cadastrado.
-                    </div>
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+          <div className="md:col-span-2">
+            <label className="space-y-1">
+              <span className="text-xs font-medium text-gray-700 dark:text-slate-300">Inativos</span>
+              <select
+                value={filters.includeInactive ? '1' : '0'}
+                onChange={(e) => setFilters((f) => ({ ...f, includeInactive: e.currentTarget.value === '1' }))}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              >
+                <option value="1">Mostrar</option>
+                <option value="0">Ocultar</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="space-y-1">
+              <span className="text-xs font-medium text-gray-700 dark:text-slate-300">Crítico</span>
+              <select
+                value={filters.onlyCritical ? '1' : '0'}
+                onChange={(e) => setFilters((f) => ({ ...f, onlyCritical: e.currentTarget.value === '1' }))}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              >
+                <option value="0">Todos</option>
+                <option value="1">Abaixo do mínimo</option>
+              </select>
+            </label>
+          </div>
         </div>
+
+        {error ? <p className="mt-3 text-sm text-red-600 dark:text-red-300">{error}</p> : null}
       </SectionCard>
 
-      <div className="text-xs text-gray-500 dark:text-slate-400">
-        Dica: se voce estiver no inicio, mantenha o minimo em 2 unidades para evitar ruptura.
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+        <div className="md:col-span-8">
+          <SectionCard title={`Produtos (${filtered.length})`}>
+            {loading ? (
+              <p className="text-sm text-gray-500 dark:text-slate-300">Carregando...</p>
+            ) : (
+              <ProductTable items={filtered} onEdit={beginEdit} onToggleActive={handleToggleActive} onDelete={handleDelete} />
+            )}
+          </SectionCard>
+        </div>
+
+        <div className="md:col-span-4">
+          <SectionCard title={editing ? 'Editar produto' : 'Novo produto'}>
+            <ProductForm
+              title=""
+              draft={draft}
+              onChange={setDraft}
+              onSubmit={handleSubmit}
+              onCancel={editing ? beginCreate : undefined}
+              isSubmitting={saving}
+              packingKits={packingKits}
+            />
+          </SectionCard>
+        </div>
       </div>
     </div>
   );
