@@ -12,7 +12,10 @@ import type {
   PurchaseQuoteItem,
   MlQuestion,
   CompetitorTracking,
-  MlListing
+  MlListing,
+  Client,
+  Supplier,
+  StockMovement
 } from './types';
 
 // === Produtos ===
@@ -356,6 +359,11 @@ export async function updatePackingKitItem(id: string, patch: Partial<PackingKit
   if (error) throw error;
 }
 
+export async function deletePackingKitItem(id: string): Promise<void> {
+  const { error } = await supabase.from('packing_kit_items').delete().eq('id', id);
+  if (error) throw error;
+}
+
 export async function applyPackingKit(kit_id: string): Promise<number> {
   const { data, error } = await supabase.rpc('apply_packing_kit', { p_kit_id: kit_id });
   if (error) throw error;
@@ -656,3 +664,49 @@ export async function deleteMlListing(id: string): Promise<void> {
   const { error } = await supabase.from('ml_listings').delete().eq('id', id);
   if (error) throw error;
 }
+
+// === Clientes (v2) ===
+
+export async function listClients(type?: 'PF' | 'PJ'): Promise<Client[]> {
+  let q = supabase.from('clients').select('*').order('name');
+  if (type) q = q.eq('type', type);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data as Client[]) ?? [];
+}
+
+export async function upsertClient(p: Partial<Client> & { name: string; type: 'PF' | 'PJ' }): Promise<void> {
+  const { error } = await supabase.from('clients').upsert(p);
+  if (error) throw error;
+}
+
+export async function deleteClient(id: string): Promise<void> {
+  const { error } = await supabase.from('clients').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// === Fornecedores (v2) ===
+
+export async function listSuppliers(): Promise<Supplier[]> {
+  const { data, error } = await supabase.from('suppliers').select('*').order('name');
+  if (error) throw error;
+  return (data as Supplier[]) ?? [];
+}
+
+export async function upsertSupplier(p: Partial<Supplier> & { name: string }): Promise<void> {
+  const { error } = await supabase.from('suppliers').upsert(p);
+  if (error) throw error;
+}
+
+export async function deleteSupplier(id: string): Promise<void> {
+  const { error } = await supabase.from('suppliers').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// === Stock Movements (Audit) ===
+
+export async function logStockMovement(m: Omit<StockMovement, 'id' | 'user_id' | 'created_at'>): Promise<void> {
+  const { error } = await supabase.from('stock_movements').insert(m);
+  if (error) throw error;
+}
+

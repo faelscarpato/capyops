@@ -36,10 +36,6 @@
     background: var(--dark-bg);
     color: var(--dark-text);
   }
-
-  * {
-    box-sizing: border-box;
-  }
 }
 
 @layer components {

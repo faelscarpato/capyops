@@ -5,7 +5,7 @@ import AppLayout from './ui/AppLayout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import InventoryPage from './pages/InventoryPage';
-import NewSalePage from './pages/NewSalePage';
+
 import ReportsPage from './pages/ReportsPage';
 import SalesHistoryPage from './pages/SalesHistoryPage';
 import MarketingPlanPage from './pages/MarketingPlanPage';
@@ -16,9 +16,10 @@ import PackingKitsPage from './pages/PackingKitsPage';
 import QuotesPage from './pages/QuotesPage';
 import QuestionsPage from './pages/QuestionsPage';
 import CompetitorTrackingPage from './pages/CompetitorTrackingPage';
-import PredictiveStockPage from './pages/PredictiveStockPage';
+
 import SettingsPage from './pages/SettingsPage';
 import ListingsPage from './pages/ListingsPage';
+import RegistrationsPage from './pages/RegistrationsPage';
 import OpeningSplash from './components/OpeningSplash';
 
 function Protected({ children }: { children: JSX.Element }) {
@@ -47,17 +48,18 @@ export default function App() {
           <Route index element={<DashboardPage />} />
           <Route path="estoque" element={<InventoryPage />} />
           <Route path="insumos" element={<SuppliesPage />} />
+          <Route path="cadastros" element={<RegistrationsPage />} />
           <Route path="despesas" element={<ExpensesPage />} />
           <Route path="kits" element={<PackingKitsPage />} />
           <Route path="orcamentos" element={<QuotesPage />} />
-          <Route path="nova-venda" element={<NewSalePage />} />
+
           <Route path="relatorios" element={<ReportsPage />} />
           <Route path="anuncios" element={<ListingsPage />} />
           <Route path="sales-history" element={<SalesHistoryPage />} />
           <Route path="precificador" element={<PriceCalculatorPage />} />
           <Route path="perguntas" element={<QuestionsPage />} />
           <Route path="competidores" element={<CompetitorTrackingPage />} />
-          <Route path="estoque-preditivo" element={<PredictiveStockPage />} />
+
           <Route path="configuracoes" element={<SettingsPage />} />
           <Route path="plano-marketing" element={<MarketingPlanPage />} />
         </Route>

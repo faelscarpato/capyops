@@ -2,19 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import type { PackingKit, PackingKitItem, Supply } from '../lib/types';
 import {
   listPackingKits,
-  upsertPackingKit,
   listPackingKitItems,
-  upsertPackingKitItem,
   listSupplies,
   listAllPackingKitItems
 } from '../lib/db';
 import PageHeader from '../ui/PageHeader';
 import SectionCard from '../ui/SectionCard';
-
-function toNumber(v: string): number {
-  const n = Number(String(v).replace(',', '.'));
-  return Number.isFinite(n) ? n : 0;
-}
+import { ExternalLink } from 'lucide-react';
+import StatusChip from '../ui/StatusChip';
 
 function fmtBRL(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -22,15 +17,12 @@ function fmtBRL(value: number) {
 
 export default function PackingKitsPage() {
   const [kits, setKits] = useState<PackingKit[]>([]);
-  const [items, setItems] = useState<PackingKitItem[]>([]);
   const [allItems, setAllItems] = useState<PackingKitItem[]>([]);
   const [supplies, setSupplies] = useState<Supply[]>([]);
   const [selectedKitId, setSelectedKitId] = useState<string | null>(null);
-  const [newKitName, setNewKitName] = useState('');
-  const [newItemSupplyId, setNewItemSupplyId] = useState('');
-  const [newItemQty, setNewItemQty] = useState(1);
-  const [err, setErr] = useState<string | null>(null);
+  const [items, setItems] = useState<PackingKitItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
 
   async function refreshKits() {
     setLoading(true);
@@ -101,45 +93,6 @@ export default function PackingKitsPage() {
     return { totalMap, countMap };
   }, [allItems, supplies]);
 
-  async function createKit() {
-    if (!newKitName.trim()) {
-      setErr('Informe um nome para o kit.');
-      return;
-    }
-    try {
-      await upsertPackingKit({ name: newKitName.trim(), is_active: true });
-      setNewKitName('');
-      await refreshKits();
-      await refreshAllItems();
-    } catch (e: any) {
-      setErr(e?.message ?? 'Erro ao criar kit.');
-    }
-  }
-
-  async function addItem() {
-    if (!selectedKitId) {
-      setErr('Selecione um kit.');
-      return;
-    }
-    if (!newItemSupplyId) {
-      setErr('Selecione um insumo.');
-      return;
-    }
-    try {
-      await upsertPackingKitItem({
-        kit_id: selectedKitId,
-        supply_id: newItemSupplyId,
-        qty_per_order: newItemQty
-      });
-      setNewItemSupplyId('');
-      setNewItemQty(1);
-      await refreshItems(selectedKitId);
-      await refreshAllItems();
-    } catch (e: any) {
-      setErr(e?.message ?? 'Erro ao adicionar item ao kit.');
-    }
-  }
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -150,6 +103,12 @@ export default function PackingKitsPage() {
             <button className="btn-ghost" onClick={refreshKits} disabled={loading}>
               {loading ? 'Atualizando...' : 'Atualizar'}
             </button>
+            <button
+              className="btn-primary flex items-center gap-2"
+              onClick={() => window.location.href = '/cadastros?tab=logistica&sub=kits'}
+            >
+              <ExternalLink size={16} /> Gerenciar (Cadastros)
+            </button>
           </div>
         }
       />
@@ -159,29 +118,6 @@ export default function PackingKitsPage() {
           {err}
         </div>
       ) : null}
-
-      <SectionCard
-        title="Criar novo kit"
-        action={
-          <div className="flex flex-wrap gap-2">
-            <button className="btn-primary" onClick={createKit}>
-              Salvar
-            </button>
-          </div>
-        }
-      >
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div>
-            <div className="label mb-1">Nome do kit</div>
-            <input
-              className="input"
-              value={newKitName}
-              onChange={(e) => setNewKitName(e.target.value)}
-              placeholder="Kit 20–23cm"
-            />
-          </div>
-        </div>
-      </SectionCard>
 
       <SectionCard title="Kits cadastrados">
         <div className="overflow-x-auto">
@@ -209,7 +145,7 @@ export default function PackingKitsPage() {
                       className={`btn-ghost ${selectedKitId === k.id ? 'font-semibold' : ''}`}
                       onClick={() => setSelectedKitId(k.id)}
                     >
-                      Gerenciar
+                      Visualizar
                     </button>
                   </td>
                 </tr>
@@ -231,41 +167,7 @@ export default function PackingKitsPage() {
       {selectedKitId ? (
         <SectionCard
           title={`Itens do kit selecionado (${kits.find((k) => k.id === selectedKitId)?.name ?? ''})`}
-          action={
-            <div className="flex flex-wrap gap-2">
-              <button className="btn-primary" onClick={addItem}>
-                Adicionar item
-              </button>
-            </div>
-          }
         >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div>
-              <div className="label mb-1">Insumo</div>
-              <select
-                className="input"
-                value={newItemSupplyId}
-                onChange={(e) => setNewItemSupplyId(e.target.value)}
-              >
-                <option value="">Selecione</option>
-                {supplies.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <div className="label mb-1">Quantidade por ordem</div>
-              <input
-                className="input"
-                inputMode="decimal"
-                value={String(newItemQty)}
-                onChange={(e) => setNewItemQty(Math.max(0, toNumber(e.target.value)))}
-              />
-            </div>
-          </div>
-
           <div className="overflow-x-auto mt-4">
             <table className="w-full text-left text-sm">
               <thead>

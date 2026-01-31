@@ -14,6 +14,7 @@ export type Product = {
   price: number;
   packing_kit_id: string | null;
   packaging_cost: number | null;
+  weight_kg?: number | null; // Added
   stock: number;
   min_stock: number;
   is_active: boolean;
@@ -109,6 +110,7 @@ export type MlListing = {
   description_chars: number | null;
   has_full_description: boolean | null;
   listed_at: string | null;
+  status?: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -180,3 +182,50 @@ export type CompetitorTracking = {
   created_at: string;
   updated_at: string;
 };
+
+// === Novos Cadastros (v2) ===
+
+export type Client = {
+  id: string;
+  user_id: string;
+  type: 'PF' | 'PJ';
+  name: string;
+  document?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip_code?: string | null;
+  notes?: string | null;
+  created_at?: string;
+};
+
+export type Supplier = {
+  id: string;
+  user_id: string;
+  name: string;
+  contact_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  doc_cnpj?: string | null;
+  address?: string | null;
+  lead_time_days?: number | null;
+  notes?: string | null;
+  created_at?: string;
+};
+
+export type StockMovement = {
+  id: string;
+  user_id: string;
+  product_id: string;
+  type: 'IN' | 'OUT' | 'ADJUST' | 'SALE' | 'RETURN';
+  quantity: number;
+  previous_stock?: number | null;
+  new_stock?: number | null;
+  reference_id?: string | null;
+  notes?: string | null;
+  created_at?: string;
+};
+

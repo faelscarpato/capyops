@@ -28,14 +28,14 @@ import logoCapyops from '../assets/logocapyops.png';
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/anuncios', label: 'Anuncios', icon: Grid2x2 },
-  { to: '/estoque-preditivo', label: 'Estoque preditivo', icon: TrendingUp },
   { to: '/configuracoes', label: 'Configuracoes', icon: Settings },
   { to: '/estoque', label: 'Estoque', icon: Package },
+  { to: '/cadastros', label: 'Cadastros', icon: ClipboardCheck },
   { to: '/insumos', label: 'Insumos', icon: Boxes },
   { to: '/despesas', label: 'Despesas', icon: CreditCard },
   { to: '/kits', label: 'Kits', icon: Layers },
   { to: '/orcamentos', label: 'Orcamentos', icon: FileText },
-  { to: '/nova-venda', label: 'Nova venda', icon: ReceiptText },
+
   { to: '/sales-history', label: 'Historico de vendas', icon: History },
   { to: '/precificador', label: 'Precificador', icon: Calculator },
   { to: '/relatorios', label: 'Relatorios', icon: BarChart3 },
@@ -55,14 +55,14 @@ export default function AppLayout() {
     return {
       '/': path === '/',
       '/anuncios': path.startsWith('/anuncios'),
-      '/estoque-preditivo': path.startsWith('/estoque-preditivo'),
+
       '/configuracoes': path.startsWith('/configuracoes'),
       '/estoque': path.startsWith('/estoque'),
       '/insumos': path.startsWith('/insumos'),
       '/despesas': path.startsWith('/despesas'),
       '/kits': path.startsWith('/kits'),
       '/orcamentos': path.startsWith('/orcamentos'),
-      '/nova-venda': path.startsWith('/nova-venda'),
+
       '/sales-history': path.startsWith('/sales-history'),
       '/precificador': path.startsWith('/precificador'),
       '/relatorios': path.startsWith('/relatorios'),
@@ -96,11 +96,10 @@ export default function AppLayout() {
                 <NavLink
                   to={item.to}
                   end={(item as any).end}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                    selected
-                      ? 'bg-blue-600 text-white shadow-soft dark:bg-cyan-400 dark:text-slate-950'
-                      : 'text-gray-700 hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800'
-                  }`}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${selected
+                    ? 'bg-blue-600 text-white shadow-soft dark:bg-cyan-400 dark:text-slate-950'
+                    : 'text-gray-700 hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800'
+                    }`}
                   onClick={() => setMobileOpen(false)}
                 >
                   <Icon
@@ -130,15 +129,13 @@ export default function AppLayout() {
           >
             <span>{mode === 'dark' ? 'Escuro' : 'Claro'}</span>
             <span
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition ${
-                mode === 'dark' ? 'bg-cyan-400' : 'bg-gray-300'
-              }`}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition ${mode === 'dark' ? 'bg-cyan-400' : 'bg-gray-300'
+                }`}
               aria-hidden="true"
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                  mode === 'dark' ? 'translate-x-4' : 'translate-x-1'
-                }`}
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${mode === 'dark' ? 'translate-x-4' : 'translate-x-1'
+                  }`}
               />
             </span>
           </button>
