@@ -12,17 +12,17 @@ type Props = {
 export default function ProductTable({ items, onEdit, onToggleActive, onDelete }: Props) {
   if (items.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
+      <div className="card p-8 text-center">
         <p className="text-sm text-gray-500 dark:text-slate-400">Nenhum produto encontrado com os filtros aplicados.</p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:bg-slate-800/60 dark:text-slate-300">
+    <div className="card overflow-hidden">
+      <div className="table-scroll max-h-[55vh] sm:max-h-[60vh]">
+        <table className="table-base min-w-full text-sm">
+          <thead>
             <tr>
               <th className="px-3 py-2 text-left">Produto</th>
               <th className="px-3 py-2 text-left">Categoria</th>
@@ -82,3 +82,5 @@ export default function ProductTable({ items, onEdit, onToggleActive, onDelete }
     </div>
   );
 }
+
+

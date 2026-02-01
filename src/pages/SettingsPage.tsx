@@ -63,7 +63,7 @@ export default function SettingsPage() {
       />
 
       {msg ? (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-900/30 dark:text-emerald-200">
+        <div className="alert alert-success">
           {msg}
         </div>
       ) : null}
@@ -130,7 +130,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <div className="label mb-1">Preview</div>
-            <div className="flex h-24 items-center justify-center rounded-lg border border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <div className="card flex h-24 items-center justify-center">
               {logoPreview ? (
                 <img src={logoPreview} alt="Logo" className="max-h-20 max-w-full object-contain" />
               ) : (

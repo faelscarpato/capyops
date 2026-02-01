@@ -35,7 +35,7 @@ export default function PurchaseQuoteManager() {
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm dark:bg-slate-800">
+            <div className="flex justify-between items-center card p-4">
                 <h3 className="font-medium text-gray-700 dark:text-gray-200">Orçamentos e Cotações</h3>
                 <button onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2 text-xs">
                     <Plus size={14} /> Novo Orçamento
@@ -89,3 +89,4 @@ export default function PurchaseQuoteManager() {
         </div>
     );
 }
+

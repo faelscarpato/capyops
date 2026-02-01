@@ -104,7 +104,7 @@ export default function PackingKitManager() {
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm dark:bg-slate-800">
+            <div className="flex justify-between items-center card p-4">
                 <h3 className="font-medium text-gray-700 dark:text-gray-200">Kits de Embalagem</h3>
                 <button onClick={() => setEditing({})} className="btn-primary flex items-center gap-2 text-xs">
                     <Plus size={14} /> Novo Kit
@@ -113,7 +113,7 @@ export default function PackingKitManager() {
 
             {editing && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-slate-800 border dark:border-slate-700 flex flex-col">
+                    <div className="card w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl flex flex-col">
                         <div className="p-4 border-b dark:border-slate-700 flex justify-between items-center bg-gray-50 dark:bg-slate-800/50">
                             <h3 className="font-semibold text-lg">{editing.id ? 'Editar Kit' : 'Novo Kit'}</h3>
                             <button onClick={() => setEditing(null)} className="text-gray-400 hover:text-gray-600">×</button>
@@ -140,7 +140,7 @@ export default function PackingKitManager() {
                                     <h4 className="font-medium text-sm mb-3 text-gray-700 dark:text-gray-300">Itens do Kit (Insumos)</h4>
 
                                     {/* Add Item Form */}
-                                    <div className="flex flex-wrap gap-2 items-end bg-gray-50 p-3 rounded border dark:bg-slate-900/50 dark:border-slate-700 mb-4">
+                                    <div className="card p-3 mb-4 flex flex-wrap gap-2 items-end">
                                         <div className="flex-1 min-w-[200px]">
                                             <div className="text-xs mb-1 text-gray-500">Insumo</div>
                                             <select
@@ -168,26 +168,27 @@ export default function PackingKitManager() {
                                     </div>
 
                                     {/* Items List */}
-                                    <div className="rounded border dark:border-slate-700 overflow-hidden">
-                                        <table className="w-full text-sm text-left">
-                                            <thead className="bg-gray-50 dark:bg-slate-900/50 text-xs uppercase text-gray-500 font-semibold">
+                                    <div className="card overflow-hidden">
+                                        <div className="table-scroll">
+                                        <table className="table-base w-full text-left">
+                                            <thead>
                                                 <tr>
-                                                    <th className="px-4 py-2">Insumo</th>
-                                                    <th className="px-4 py-2 text-right">Qtd</th>
-                                                    <th className="px-4 py-2 text-center">Ações</th>
+                                                    <th>Insumo</th>
+                                                    <th className="text-right">Qtd</th>
+                                                    <th className="text-center">Ações</th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y dark:divide-slate-800">
+                                            <tbody>
                                                 {editingItems.map(item => {
                                                     const supply = supplies.find(s => s.id === item.supply_id);
                                                     return (
-                                                        <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50">
-                                                            <td className="px-4 py-2">{supply?.name || '???'}</td>
-                                                            <td className="px-4 py-2 text-right">{item.qty_per_order}</td>
-                                                            <td className="px-4 py-2 text-center">
+                                                        <tr key={item.id}>
+                                                            <td>{supply?.name || '???'}</td>
+                                                            <td className="text-right">{item.qty_per_order}</td>
+                                                            <td className="text-center">
                                                                 <button
                                                                     onClick={() => handleRemoveItem(item.id)}
-                                                                    className="text-red-500 hover:text-red-700 p-1"
+                                                                    className="btn-ghost p-1 text-red-500"
                                                                     title="Remover"
                                                                 >
                                                                     <Archive size={16} />
@@ -205,14 +206,15 @@ export default function PackingKitManager() {
                                                 )}
                                             </tbody>
                                         </table>
+                                        </div>
                                     </div>
                                 </div>
                             )}
 
                             {!editing.id && (
-                                <div className="text-center py-6 text-gray-500 text-sm bg-gray-50 rounded dark:bg-slate-900/30 border border-dashed dark:border-slate-700">
-                                    Salve o kit primeiro para adicionar itens.
-                                </div>
+                            <div className="text-center py-6 text-gray-500 text-sm card border border-dashed dark:border-slate-700">
+                                Salve o kit primeiro para adicionar itens.
+                            </div>
                             )}
                         </div>
 
@@ -225,7 +227,7 @@ export default function PackingKitManager() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {kits.map(kit => (
-                    <div key={kit.id} className="p-4 bg-white rounded-lg shadow-sm border border-gray-100 hover:border-cyan-200 transition-colors dark:bg-slate-900 dark:border-slate-800 relative group">
+                    <div key={kit.id} className="card p-4 relative group">
                         <div className="flex justify-between items-start mb-2">
                             <div className="flex items-center gap-2">
                                 <div className="p-2 bg-cyan-100 text-cyan-700 rounded-lg dark:bg-cyan-900/30 dark:text-cyan-400">
@@ -236,13 +238,13 @@ export default function PackingKitManager() {
                                     <span className="text-xs text-gray-400">ID: {kit.id.slice(0, 8)}</span>
                                 </div>
                             </div>
-                            <button onClick={() => handleEditClick(kit)} className="text-gray-400 hover:text-cyan-500 p-1 hover:bg-cyan-50 rounded transition-all dark:hover:bg-cyan-900/30">
+                            <button onClick={() => handleEditClick(kit)} className="btn-ghost p-1 text-gray-400 hover:text-cyan-500">
                                 <Edit2 size={16} />
                             </button>
                         </div>
                         <div className="mt-3 flex items-center justify-between text-xs">
                             <span className="text-gray-500 dark:text-gray-400">Itens no kit:</span>
-                            <span className="font-medium bg-gray-100 px-2 py-0.5 rounded text-gray-700 dark:bg-slate-800 dark:text-gray-300">
+                            <span className="badge badge-neutral">
                                 {kitCounts[kit.id] || 0} items
                             </span>
                         </div>
@@ -252,10 +254,12 @@ export default function PackingKitManager() {
                     <div className="col-span-full text-center text-gray-400 py-12 border-2 border-dashed border-gray-200 rounded-lg dark:border-slate-700">
                         <Archive size={48} className="mx-auto mb-2 opacity-20" />
                         <p>Nenhum kit de embalagem cadastrado.</p>
-                        <button onClick={() => setEditing({})} className="text-cyan-600 hover:underline mt-2 text-sm">Criar o primeiro</button>
+                        <button onClick={() => setEditing({})} className="btn-ghost mt-2 text-sm">Criar o primeiro</button>
                     </div>
                 )}
             </div>
         </div>
     );
 }
+
+

@@ -229,15 +229,15 @@ export default function QuotesPage() {
       </div>
 
       {err ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-900/30 dark:text-red-200 no-print">
+        <div className="alert alert-error no-print">
           {err}
         </div>
       ) : null}
 
       <div className="no-print">
         <SectionCard title="Orcamentos cadastrados">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+          <div className="table-scroll">
+            <table className="table-base w-full text-left">
               <thead>
                 <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
                   <th className="px-2 py-2 font-semibold">Fornecedor</th>
@@ -288,8 +288,8 @@ export default function QuotesPage() {
               title={`Itens do orcamento (${selectedQuote.supplier_name})`}
             >
 
-              <div className="overflow-x-auto mt-6">
-                <table className="w-full text-left text-sm">
+              <div className="table-scroll mt-6">
+                <table className="table-base w-full text-left">
                   <thead>
                     <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
                       <th className="px-2 py-2 font-semibold">Item</th>
@@ -368,31 +368,31 @@ export default function QuotesPage() {
               </div>
             </div>
 
-            <table className="mt-4 w-full text-left text-sm">
+            <table className="table-base mt-4 w-full text-left">
               <thead>
-                <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
-                  <th className="px-2 py-2 font-semibold">Item</th>
-                  <th className="px-2 py-2 text-center font-semibold">Un</th>
-                  <th className="px-2 py-2 text-right font-semibold">Qtd</th>
-                  <th className="px-2 py-2 text-right font-semibold">Unitario</th>
-                  <th className="px-2 py-2 text-right font-semibold">Total</th>
+                <tr>
+                  <th>Item</th>
+                  <th className="text-center">Un</th>
+                  <th className="text-right">Qtd</th>
+                  <th className="text-right">Unitario</th>
+                  <th className="text-right">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((it, index) => (
                   <tr key={it.id} className={index % 2 === 1 ? 'bg-gray-50' : ''}>
-                    <td className="px-2 py-2">{it.description}</td>
-                    <td className="px-2 py-2 text-center">{it.unit}</td>
-                    <td className="px-2 py-2 text-right">{it.qty}</td>
-                    <td className="px-2 py-2 text-right">{fmtBRL(it.unit_cost)}</td>
-                    <td className="px-2 py-2 text-right">{fmtBRL(Number(it.qty) * Number(it.unit_cost))}</td>
+                    <td>{it.description}</td>
+                    <td className="text-center">{it.unit}</td>
+                    <td className="text-right">{it.qty}</td>
+                    <td className="text-right">{fmtBRL(it.unit_cost)}</td>
+                    <td className="text-right">{fmtBRL(Number(it.qty) * Number(it.unit_cost))}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
             <div className="mt-4 flex justify-end">
-              <div className="rounded-md bg-gray-100 px-4 py-2 text-sm font-semibold">
+              <div className="card px-4 py-2 text-sm font-semibold">
                 Total: {fmtBRL(selectedTotal)}
               </div>
             </div>
@@ -406,3 +406,6 @@ export default function QuotesPage() {
     </div>
   );
 }
+
+
+

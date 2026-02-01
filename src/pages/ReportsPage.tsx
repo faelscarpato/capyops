@@ -718,7 +718,7 @@ export default function ReportsPage() {
       />
 
       {err ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-900/30 dark:text-red-200">
+        <div className="alert alert-error">
           {err}
         </div>
       ) : null}
@@ -821,10 +821,10 @@ export default function ReportsPage() {
       </div>
 
       <SectionCard title="Produtos em estoque">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="table-scroll">
+          <table className="table-base w-full text-left">
             <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
+              <tr >
                 <th className="px-2 py-2 font-semibold">Produto</th>
                 <th className="px-2 py-2 text-center font-semibold">Qtd</th>
                 <th className="px-2 py-2 text-center font-semibold">Minimo</th>
@@ -839,11 +839,11 @@ export default function ReportsPage() {
                   <td className="px-2 py-3 text-center">{p.min_stock}</td>
                   <td className="px-2 py-3 text-center">
                     {p.status === 'CRITICO' ? (
-                      <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-900/30 dark:text-red-200">
+                      <span className="badge badge-danger">
                         Critico
                       </span>
                     ) : (
-                      <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-900/30 dark:text-emerald-200">
+                      <span className="badge badge-success">
                         OK
                       </span>
                     )}
@@ -863,10 +863,10 @@ export default function ReportsPage() {
       </SectionCard>
 
       <SectionCard title="Insumos cadastrados">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="table-scroll">
+          <table className="table-base w-full text-left">
             <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
+              <tr >
                 <th className="px-2 py-2 font-semibold">Insumo</th>
                 <th className="px-2 py-2 font-semibold">Fornecedor</th>
                 <th className="px-2 py-2 text-right font-semibold">Valor</th>
@@ -893,10 +893,10 @@ export default function ReportsPage() {
       </SectionCard>
 
       <SectionCard title="Estoque preditivo (30 dias)">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="table-scroll">
+          <table className="table-base w-full text-left">
             <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
+              <tr >
                 <th className="px-2 py-2 font-semibold">Produto</th>
                 <th className="px-2 py-2 text-right font-semibold">Vendas 30d</th>
                 <th className="px-2 py-2 text-right font-semibold">Media/dia</th>
@@ -915,11 +915,11 @@ export default function ReportsPage() {
                   </td>
                   <td className="px-2 py-3 text-center">
                     {row.status === 'REPOR' ? (
-                      <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-900/30 dark:text-red-200">
+                      <span className="badge badge-danger">
                         Repor
                       </span>
                     ) : (
-                      <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-900/30 dark:text-emerald-200">
+                      <span className="badge badge-success">
                         OK
                       </span>
                     )}
@@ -939,10 +939,10 @@ export default function ReportsPage() {
       </SectionCard>
 
       <SectionCard title="Kits cadastrados">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="table-scroll">
+          <table className="table-base w-full text-left">
             <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
+              <tr >
                 <th className="px-2 py-2 font-semibold">Kit</th>
                 <th className="px-2 py-2 text-center font-semibold">Itens</th>
                 <th className="px-2 py-2 font-semibold">Notas</th>
@@ -970,3 +970,8 @@ export default function ReportsPage() {
     </div>
   );
 }
+
+
+
+
+

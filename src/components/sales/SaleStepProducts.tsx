@@ -55,8 +55,8 @@ export default function SaleStepProducts({
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <table className="min-w-[820px] w-full text-sm">
+      <div className="table-scroll rounded-xl border border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <table className="table-base min-w-[820px] w-full text-sm">
           <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:bg-slate-950 dark:text-slate-400">
             <tr>
               <th className="py-3 px-3 text-left">Produto</th>
@@ -85,10 +85,12 @@ export default function SaleStepProducts({
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+        <div className="card p-4 text-sm text-gray-600 dark:text-slate-300">
           Adicione pelo menos um item para continuar.
         </div>
       ) : null}
     </div>
   );
 }
+
+

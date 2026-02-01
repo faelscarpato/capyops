@@ -36,6 +36,7 @@ export default function ProductTab() {
     const [editing, setEditing] = useState<Product | null>(null);
     const [draft, setDraft] = useState<ProductDraft>(emptyDraft);
     const [filter, setFilter] = useState('');
+    const [formOpen, setFormOpen] = useState(false);
 
     async function refresh() {
         try {
@@ -67,12 +68,13 @@ export default function ProductTab() {
     function beginCreate() {
         setEditing(null);
         setDraft(emptyDraft);
+        setFormOpen(true);
     }
 
     function beginEdit(p: Product) {
         setEditing(p);
         setDraft({ ...p });
-        // Scroll to form?
+        setFormOpen(true);
     }
 
     async function handleSubmit() {
@@ -82,6 +84,7 @@ export default function ProductTab() {
             await refresh();
             setEditing(null);
             setDraft(emptyDraft);
+            setFormOpen(false);
         } catch (e: any) {
             setError(e?.message);
         } finally {
@@ -109,48 +112,70 @@ export default function ProductTab() {
     }
 
     return (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            <div className="lg:col-span-8 space-y-4">
-                <SectionCard
-                    title={`Produtos Cadastrados (${filtered.length})`}
-                    action={
-                        <div className="flex gap-2">
-                            <input
-                                className="px-3 py-1 rounded border border-gray-200 text-sm dark:bg-slate-900 dark:border-slate-700"
-                                placeholder="Buscar produto..."
-                                value={filter}
-                                onChange={(e) => setFilter(e.target.value)}
-                            />
-                            <button onClick={() => exportToCSV(filtered, 'produtos.csv')} className="btn-ghost text-xs p-1">
-                                <Download size={16} />
+        <div className="space-y-4">
+            <SectionCard
+                title={`Produtos Cadastrados (${filtered.length})`}
+                action={
+                    <div className="flex flex-wrap items-center gap-2">
+                        <input
+                            className="input w-full sm:w-60"
+                            placeholder="Buscar produto..."
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value)}
+                        />
+                        <button onClick={() => exportToCSV(filtered, 'produtos.csv')} className="btn-ghost text-xs p-1">
+                            <Download size={16} />
+                        </button>
+                        <button onClick={beginCreate} className="btn-primary text-xs">
+                            Novo Produto
+                        </button>
+                    </div>
+                }
+            >
+                {error ? <div className="alert alert-error mb-3">{error}</div> : null}
+                {loading ? (
+                    <p className="text-sm text-gray-500 dark:text-slate-400">Carregando...</p>
+                ) : (
+                    <ProductTable items={filtered} onEdit={beginEdit} onDelete={handleDelete} onToggleActive={handleToggleActive} />
+                )}
+            </SectionCard>
+
+            {formOpen ? (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                    <div className="card w-full max-w-3xl p-5 shadow-xl max-h-[90vh] overflow-y-auto">
+                        <div className="mb-4 flex items-center justify-between">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">
+                                {editing ? 'Editar Produto' : 'Novo Produto'}
+                            </h3>
+                            <button
+                                className="btn-ghost"
+                                type="button"
+                                onClick={() => {
+                                    setFormOpen(false);
+                                    setEditing(null);
+                                    setDraft(emptyDraft);
+                                }}
+                            >
+                                Fechar
                             </button>
                         </div>
-                    }
-                >
-                    {loading ? (
-                        <p> Carregando...</p>
-                    ) : (
-                        <ProductTable items={filtered} onEdit={beginEdit} onDelete={handleDelete} onToggleActive={handleToggleActive} />
-                    )}
-                </SectionCard>
-            </div >
-            <div className="lg:col-span-4">
-                <SectionCard title={editing ? 'Editar Produto' : 'Novo Produto'}>
-                    {error && <p className="text-red-500 mb-2">{error}</p>}
-                    <ProductForm
-                        title=""
-                        draft={draft}
-                        onChange={setDraft}
-                        onSubmit={handleSubmit}
-                        onCancel={() => {
-                            setEditing(null);
-                            setDraft(emptyDraft);
-                        }}
-                        isSubmitting={saving}
-                        packingKits={packingKits}
-                    />
-                </SectionCard>
-            </div>
-        </div >
+                        <ProductForm
+                            title=""
+                            draft={draft}
+                            onChange={setDraft}
+                            onSubmit={handleSubmit}
+                            onCancel={() => {
+                                setFormOpen(false);
+                                setEditing(null);
+                                setDraft(emptyDraft);
+                            }}
+                            isSubmitting={saving}
+                            packingKits={packingKits}
+                        />
+                    </div>
+                </div>
+            ) : null}
+        </div>
     );
 }
+

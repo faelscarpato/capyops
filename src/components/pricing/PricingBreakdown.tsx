@@ -12,7 +12,7 @@ function pct(part: number, total: number) {
 export default function PricingBreakdown({ result }: Props) {
   if (!result) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+      <div className="card p-4 text-sm text-gray-600 dark:text-slate-300">
         Preencha os dados ao lado para ver o detalhamento do preço sugerido.
       </div>
     );
@@ -21,7 +21,7 @@ export default function PricingBreakdown({ result }: Props) {
   const { finalPrice, totalCost, grossProfit, grossMarginPercent, breakdown } = result;
 
   return (
-    <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+    <div className="space-y-4 card p-4">
       <div>
         <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">Resumo</div>
         <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -93,3 +93,4 @@ function Row({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
+

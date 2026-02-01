@@ -114,35 +114,35 @@ export default function PackingKitsPage() {
       />
 
       {err ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-900/30 dark:text-red-200">
+        <div className="alert alert-error">
           {err}
         </div>
       ) : null}
 
       <SectionCard title="Kits cadastrados">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="table-scroll">
+          <table className="table-base w-full text-left">
             <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
-                <th className="px-2 py-2 font-semibold">Kit</th>
-                <th className="px-2 py-2 text-right font-semibold">Custo total</th>
-                <th className="px-2 py-2 text-center font-semibold">Itens</th>
-                <th className="px-2 py-2 text-center font-semibold">Ações</th>
+              <tr>
+                <th>Kit</th>
+                <th className="text-right">Custo total</th>
+                <th className="text-center">Itens</th>
+                <th className="text-center">Ações</th>
               </tr>
             </thead>
             <tbody>
               {kits.map((k) => (
-                <tr key={k.id} className="border-b border-gray-100 hover:bg-gray-50 dark:border-slate-800 dark:hover:bg-slate-900">
-                  <td className="px-2 py-3">
-                    <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">{k.name}</div>
+                <tr key={k.id}>
+                  <td>
+                    <div className="text-sm font-semibold">{k.name}</div>
                   </td>
-                  <td className="px-2 py-3 text-right">
+                  <td className="text-right">
                     {fmtBRL(kitTotals.totalMap.get(k.id) ?? 0)}
                   </td>
-                  <td className="px-2 py-3 text-center">{kitTotals.countMap.get(k.id) ?? 0}</td>
-                  <td className="px-2 py-3 text-center">
+                  <td className="text-center">{kitTotals.countMap.get(k.id) ?? 0}</td>
+                  <td className="text-center">
                     <button
-                      className={`btn-ghost ${selectedKitId === k.id ? 'font-semibold' : ''}`}
+                      className={`btn-ghost ${selectedKitId === k.id ? 'bg-indigo-50 text-indigo-700 dark:bg-cyan-400/15 dark:text-cyan-200' : ''}`}
                       onClick={() => setSelectedKitId(k.id)}
                     >
                       Visualizar
@@ -168,21 +168,21 @@ export default function PackingKitsPage() {
         <SectionCard
           title={`Itens do kit selecionado (${kits.find((k) => k.id === selectedKitId)?.name ?? ''})`}
         >
-          <div className="overflow-x-auto mt-4">
-            <table className="w-full text-left text-sm">
+          <div className="mt-4 table-scroll">
+            <table className="table-base w-full text-left">
               <thead>
-                <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
-                  <th className="px-2 py-2 font-semibold">Insumo</th>
-                  <th className="px-2 py-2 text-right font-semibold">Quantidade</th>
+                <tr>
+                  <th>Insumo</th>
+                  <th className="text-right">Quantidade</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((it) => {
                   const s = supplies.find((sup) => sup.id === it.supply_id);
                   return (
-                    <tr key={it.id} className="border-b border-gray-100 hover:bg-gray-50 dark:border-slate-800 dark:hover:bg-slate-900">
-                      <td className="px-2 py-3">{s?.name ?? it.supply_id}</td>
-                      <td className="px-2 py-3 text-right">{it.qty_per_order}</td>
+                    <tr key={it.id}>
+                      <td>{s?.name ?? it.supply_id}</td>
+                      <td className="text-right">{it.qty_per_order}</td>
                     </tr>
                   );
                 })}
@@ -203,3 +203,5 @@ export default function PackingKitsPage() {
     </div>
   );
 }
+
+

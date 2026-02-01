@@ -41,7 +41,7 @@ export default function ProductWeightManager() {
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm dark:bg-slate-800">
+            <div className="flex justify-between items-center card p-4">
                 <div className="flex gap-2 items-center w-1/2">
                     <Search className="w-4 h-4 text-gray-500" />
                     <input
@@ -53,9 +53,10 @@ export default function ProductWeightManager() {
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden dark:bg-slate-900 border dark:border-slate-800">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-50 dark:bg-slate-800/50 text-xs uppercase text-gray-500 font-medium">
+            <div className="card overflow-hidden">
+                <div className="table-scroll">
+                <table className="table-base w-full text-left">
+                    <thead>
                         <tr>
                             <th className="p-3">Produto</th>
                             <th className="p-3 text-center">SKU</th>
@@ -92,7 +93,7 @@ export default function ProductWeightManager() {
                                     </td>
                                     <td className="p-3 text-center">
                                         {hasEdit && (
-                                            <button onClick={() => handleSave(p.id)} className="text-cyan-600 hover:bg-cyan-50 p-1 rounded">
+                                            <button onClick={() => handleSave(p.id)} className="btn-ghost p-1 text-cyan-600">
                                                 <Save size={16} />
                                             </button>
                                         )}
@@ -102,7 +103,10 @@ export default function ProductWeightManager() {
                         })}
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     );
 }
+
+

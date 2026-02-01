@@ -6,7 +6,7 @@ type StatusChipProps = {
 export default function StatusChip({ status, isActive }: StatusChipProps) {
   if (isActive !== undefined) {
     return (
-      <span className={`px-2 py-1 rounded text-xs font-medium border ${isActive ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
+      <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
         {isActive ? 'Ativo' : 'Inativo'}
       </span>
     );

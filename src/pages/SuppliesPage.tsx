@@ -67,35 +67,35 @@ export default function SuppliesPage() {
       />
 
       {err ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-900/30 dark:text-red-200">
+        <div className="alert alert-error">
           {err}
         </div>
       ) : null}
 
       <SectionCard title="Insumos">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="table-scroll">
+          <table className="table-base w-full text-left">
             <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
-                <th className="px-2 py-2 font-semibold">Insumo</th>
-                <th className="px-2 py-2 font-semibold">Categoria</th>
-                <th className="px-2 py-2 font-semibold">Unidade</th>
-                <th className="px-2 py-2 font-semibold">Fornecedor</th>
-                <th className="px-2 py-2 text-right font-semibold">Custo</th>
-                <th className="px-2 py-2 text-center font-semibold">Estoque</th>
-                <th className="px-2 py-2 text-center font-semibold">Mínimo</th>
-                <th className="px-2 py-2 text-center font-semibold">Status</th>
+              <tr>
+                <th>Insumo</th>
+                <th>Categoria</th>
+                <th>Unidade</th>
+                <th>Fornecedor</th>
+                <th className="text-right">Custo</th>
+                <th className="text-center">Estoque</th>
+                <th className="text-center">Mínimo</th>
+                <th className="text-center">Status</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((s) => (
-                <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50 dark:border-slate-800 dark:hover:bg-slate-900">
-                  <td className="px-2 py-3">
-                    <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">{s.name}</div>
+                <tr key={s.id}>
+                  <td>
+                    <div className="text-sm font-semibold">{s.name}</div>
                   </td>
-                  <td className="px-2 py-3">{s.category}</td>
-                  <td className="px-2 py-3">{s.unit}</td>
-                  <td className="px-2 py-3">
+                  <td className="table-muted">{s.category}</td>
+                  <td className="table-muted">{s.unit}</td>
+                  <td>
                     <input
                       className="input w-40"
                       value={s.supplier_name ?? ''}
@@ -103,14 +103,14 @@ export default function SuppliesPage() {
                       placeholder="Fornecedor"
                     />
                   </td>
-                  <td className="px-2 py-3 text-right">
+                  <td className="text-right">
                     <input
                       className="input w-24 text-right"
                       value={String(s.cost_per_unit)}
                       onChange={(e) => quickUpdate(s.id, { cost_per_unit: toNumber(e.target.value) })}
                     />
                   </td>
-                  <td className="px-2 py-3 text-center">
+                  <td className="text-center">
                     <input
                       className="input w-20 text-center"
                       value={String(s.stock_qty)}
@@ -120,7 +120,7 @@ export default function SuppliesPage() {
                       inputMode="decimal"
                     />
                   </td>
-                  <td className="px-2 py-3 text-center">
+                  <td className="text-center">
                     <input
                       className="input w-20 text-center"
                       value={String(s.min_qty)}
@@ -130,7 +130,7 @@ export default function SuppliesPage() {
                       inputMode="decimal"
                     />
                   </td>
-                  <td className="px-2 py-3 text-center">
+                  <td className="text-center">
                     <StatusChip status={s.status} />
                   </td>
                 </tr>
@@ -151,3 +151,5 @@ export default function SuppliesPage() {
     </div>
   );
 }
+
+

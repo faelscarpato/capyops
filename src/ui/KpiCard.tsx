@@ -31,9 +31,9 @@ export default function KpiCard({ title, value, subtitle, icon, trend, onClick, 
       type={clickable ? 'button' : undefined}
       onClick={onClick}
       className={[
-        'w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition',
+        'w-full rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-card transition',
         'dark:border-slate-800 dark:bg-slate-900',
-        clickable ? 'hover:bg-gray-50 hover:shadow-md dark:hover:bg-slate-950' : '',
+        clickable ? 'hover:-translate-y-0.5 hover:bg-gray-50 dark:hover:bg-slate-950' : '',
         clickable ? 'focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:focus:ring-cyan-400/30' : ''
       ]
         .filter(Boolean)
@@ -44,12 +44,12 @@ export default function KpiCard({ title, value, subtitle, icon, trend, onClick, 
           <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
             {title}
           </div>
-          <div className="mt-2 truncate text-2xl font-semibold text-gray-900 dark:text-slate-100">{value}</div>
+          <div className="mt-2 truncate text-2xl font-bold text-gray-900 dark:text-slate-100">{value}</div>
           {subtitle ? <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">{subtitle}</div> : null}
         </div>
 
         {icon ? (
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-gray-200 bg-indigo-50 text-indigo-600 dark:border-slate-800 dark:bg-cyan-400/15 dark:text-cyan-200">
             {icon}
           </div>
         ) : null}

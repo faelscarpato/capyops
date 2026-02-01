@@ -94,8 +94,8 @@ export default function ListingsPage() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900/40 dark:bg-red-900/10 dark:text-red-200 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4" />
+        <div className="alert alert-error flex items-center gap-2">
+          <AlertCircle className="h-4 w-4" />
           {error}
         </div>
       )}
@@ -109,9 +109,9 @@ export default function ListingsPage() {
             onChange={e => setFilter(e.target.value)}
           />
         </div>
-        <div className="overflow-x-auto">
-          <table className="table w-full text-sm text-left">
-            <thead className="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-slate-800/50 dark:text-slate-400">
+        <div className="table-scroll">
+          <table className="table-base w-full text-left">
+            <thead>
               <tr>
                 <th className="p-3">Anúncio</th>
                 <th className="p-3 text-center">Imagens</th>
@@ -120,7 +120,7 @@ export default function ListingsPage() {
                 <th className="p-3 text-center">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+            <tbody>
               {loading ? (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-sm text-gray-500 dark:text-slate-400">
@@ -139,7 +139,7 @@ export default function ListingsPage() {
                   const okImgs = (it.images_count ?? 0) >= 6;
                   const okDesc = it.has_full_description === true;
                   return (
-                    <tr key={it.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors">
+                    <tr key={it.id}>
                       <td className="p-3">
                         <div className="font-medium text-gray-900 dark:text-slate-100">{it.title}</div>
                         <div className="text-xs text-gray-500 dark:text-slate-400">{it.ml_listing_id}</div>
@@ -155,12 +155,12 @@ export default function ListingsPage() {
                         )}
                       </td>
                       <td className="p-3 text-center">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${okImgs ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        <span className={`badge ${okImgs ? 'badge-success' : 'badge-danger'}`}>
                           {it.images_count ?? 0}
                         </span>
                       </td>
                       <td className="p-3 text-center">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${okDesc ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                        <span className={`badge ${okDesc ? 'badge-success' : 'badge-warning'}`}>
                           {okDesc ? 'Completa' : 'Pendente'}
                         </span>
                       </td>
@@ -168,7 +168,7 @@ export default function ListingsPage() {
                         <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{days == null ? '—' : `${days}d`}</span>
                       </td>
                       <td className="p-3 text-center">
-                        <span className="text-xs text-gray-400 uppercase">{it.status || 'Ativo'}</span>
+                        <span className="badge badge-neutral">{it.status || 'Ativo'}</span>
                       </td>
                     </tr>
                   );
@@ -181,3 +181,4 @@ export default function ListingsPage() {
     </div>
   );
 }
+

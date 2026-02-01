@@ -117,30 +117,30 @@ export default function InventoryPage() {
         }
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 dark:bg-slate-900 dark:border-slate-800">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="card p-4">
           <p className="text-xs uppercase text-gray-500 font-semibold">Valor em Estoque</p>
           <p className="text-2xl font-bold text-gray-800 dark:text-gray-100 mt-1">
             {totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 dark:bg-slate-900 dark:border-slate-800">
+        <div className="card p-4">
           <p className="text-xs uppercase text-gray-500 font-semibold">Total de Itens</p>
           <p className="text-2xl font-bold text-gray-800 dark:text-gray-100 mt-1">{filtered.reduce((acc, p) => acc + p.stock, 0)} un</p>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 dark:bg-slate-900 dark:border-slate-800 relative overflow-hidden">
+        <div className="card relative overflow-hidden p-4">
           <p className="text-xs uppercase text-red-500 font-semibold">Itens em Risco (15d)</p>
           <p className="text-2xl font-bold text-red-600 mt-1">{riskCount}</p>
           <AlertTriangle className="absolute right-[-10px] bottom-[-10px] text-red-100 w-20 h-20 pointer-events-none" />
         </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 dark:bg-slate-900 dark:border-slate-800">
+        <div className="card p-4">
           <p className="text-xs uppercase text-gray-500 font-semibold">Vendas (30d)</p>
           <p className="text-2xl font-bold text-blue-600 mt-1">{filtered.reduce((acc, p) => acc + p.total30d, 0)} un</p>
         </div>
       </div>
 
       <SectionCard title="Consulta de Produtos">
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="mb-6 flex flex-col gap-4 md:flex-row">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
@@ -152,7 +152,7 @@ export default function InventoryPage() {
           </div>
           <div className="flex gap-2">
             <select
-              className="input w-40"
+              className="input w-full sm:w-40"
               value={filterCategory}
               onChange={e => setFilterCategory(e.target.value)}
             >
@@ -161,16 +161,16 @@ export default function InventoryPage() {
             </select>
             <button
               onClick={() => setHideInactive(!hideInactive)}
-              className={`px-4 py-2 rounded text-sm font-medium border ${hideInactive ? 'bg-gray-100 border-gray-300 text-gray-700' : 'bg-transparent border-gray-200 text-gray-500'}`}
+              className={`btn-ghost ${hideInactive ? 'bg-indigo-50 text-indigo-700 dark:bg-cyan-400/15 dark:text-cyan-200' : ''}`}
             >
               {hideInactive ? 'Ocultando Inativos' : 'Mostrando Inativos'}
             </button>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50 dark:bg-slate-800/50 text-xs uppercase text-gray-500 font-medium">
+        <div className="table-scroll max-h-[55vh] sm:max-h-[60vh]">
+          <table className="table-base w-full text-left">
+            <thead>
               <tr>
                 <th className="p-3">Produto</th>
                 <th className="p-3">Categoria</th>
@@ -196,11 +196,11 @@ export default function InventoryPage() {
                   </td>
                   <td className="p-3 text-center">
                     {p.daysRemaining < 900 ? (
-                      <span className={`text-xs px-2 py-1 rounded ${p.daysRemaining < 15 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                      <span className={`badge ${p.daysRemaining < 15 ? 'badge-danger' : 'badge-success'}`}>
                         {p.daysRemaining.toFixed(0)} dias
                       </span>
                     ) : (
-                      <span className="text-gray-400">-</span>
+                      <span className="table-muted">-</span>
                     )}
                   </td>
                   <td className="p-3 text-center">
@@ -218,3 +218,4 @@ export default function InventoryPage() {
     </div>
   );
 }
+

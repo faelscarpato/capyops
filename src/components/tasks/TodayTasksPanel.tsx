@@ -56,7 +56,7 @@ export default function TodayTasksPanel({ loading, tasks, onToggle, onCreate }: 
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            className={['btn-ghost', filter === 'pending' ? 'ring-1 ring-blue-500/30 dark:ring-cyan-400/20' : '']
+            className={['btn-ghost', filter === 'pending' ? 'bg-indigo-50 text-indigo-700 dark:bg-cyan-400/15 dark:text-cyan-200' : '']
               .filter(Boolean)
               .join(' ')}
             onClick={() => setFilter('pending')}
@@ -66,7 +66,7 @@ export default function TodayTasksPanel({ loading, tasks, onToggle, onCreate }: 
           </button>
           <button
             type="button"
-            className={['btn-ghost', filter === 'done' ? 'ring-1 ring-blue-500/30 dark:ring-cyan-400/20' : '']
+            className={['btn-ghost', filter === 'done' ? 'bg-indigo-50 text-indigo-700 dark:bg-cyan-400/15 dark:text-cyan-200' : '']
               .filter(Boolean)
               .join(' ')}
             onClick={() => setFilter('done')}

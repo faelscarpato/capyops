@@ -154,7 +154,7 @@ export default function SalesHistoryPage() {
       />
 
       {err ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-900/30 dark:text-red-200">
+        <div className="alert alert-error">
           {err}
         </div>
       ) : null}
@@ -184,16 +184,16 @@ export default function SalesHistoryPage() {
       </SectionCard>
 
       <SectionCard title="Vendas registradas">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="table-scroll">
+          <table className="table-base w-full text-left">
             <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
-                <th className="px-2 py-2 font-semibold hidden sm:table-cell">Data</th>
-                <th className="px-2 py-2 font-semibold">Produto</th>
-                <th className="px-2 py-2 text-right font-semibold">Valor</th>
-                <th className="px-2 py-2 font-semibold hidden md:table-cell">Canal</th>
-                <th className="px-2 py-2 text-center font-semibold">Status</th>
-                <th className="px-2 py-2 text-right font-semibold hidden lg:table-cell">Acoes</th>
+              <tr>
+                <th className="hidden sm:table-cell">Data</th>
+                <th>Produto</th>
+                <th className="text-right">Valor</th>
+                <th className="hidden md:table-cell">Canal</th>
+                <th className="text-center">Status</th>
+                <th className="hidden lg:table-cell text-right">Acoes</th>
               </tr>
             </thead>
             <tbody>
@@ -201,9 +201,9 @@ export default function SalesHistoryPage() {
                 const canHandle = row.status === 'completed';
                 const totalValue = Number(row.sale_price ?? 0) * Number(row.quantity ?? 0);
                 return (
-                  <tr key={row.id} className="border-b border-gray-100 dark:border-slate-800">
-                    <td className="px-2 py-3 hidden sm:table-cell">{formatDate(row.sold_at)}</td>
-                    <td className="px-2 py-3">
+                  <tr key={row.id}>
+                    <td className="hidden sm:table-cell">{formatDate(row.sold_at)}</td>
+                    <td>
                       <div className="flex flex-col">
                         <div className="font-medium">{row.product?.name ?? 'Produto'}</div>
                         <div className="text-xs text-gray-500 dark:text-slate-400">
@@ -211,12 +211,12 @@ export default function SalesHistoryPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-2 py-3 text-right">{fmtBRL(totalValue)}</td>
-                    <td className="px-2 py-3 hidden md:table-cell">{row.channel}</td>
-                    <td className="px-2 py-3 text-center">
+                    <td className="text-right">{fmtBRL(totalValue)}</td>
+                    <td className="hidden md:table-cell">{row.channel}</td>
+                    <td className="text-center">
                       <StatusChip status={row.status} />
                     </td>
-                    <td className="px-2 py-3 text-right hidden lg:table-cell">
+                    <td className="hidden lg:table-cell text-right">
                       {canHandle ? (
                         <button
                           className="btn-ghost text-xs"
@@ -254,7 +254,7 @@ export default function SalesHistoryPage() {
 
       {selectedSale ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-white p-5 shadow-xl dark:bg-slate-900">
+          <div className="card w-full max-w-lg p-5 shadow-xl">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Registrar excecao</h3>
               <button className="btn-ghost" type="button" onClick={() => setSelectedSale(null)} disabled={saving}>
@@ -338,3 +338,6 @@ export default function SalesHistoryPage() {
     </div>
   );
 }
+
+
+

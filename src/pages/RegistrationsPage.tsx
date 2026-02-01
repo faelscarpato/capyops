@@ -33,17 +33,17 @@ export default function RegistrationsPage() {
                 subtitle="Central de gerenciamento de entidades do sistema."
             />
 
-            <div className="border-b border-gray-200 dark:border-slate-800">
-                <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Tabs">
+            <div className="card p-2">
+                <nav className="flex flex-wrap gap-2" aria-label="Tabs">
                     {TABS.map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`
-                whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors
+                whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-colors
                 ${activeTab === tab.id
-                                    ? 'border-blue-500 text-blue-600 dark:border-cyan-400 dark:text-cyan-400'
-                                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:text-slate-300'
+                                    ? 'bg-indigo-50 text-indigo-700 dark:bg-cyan-400/15 dark:text-cyan-200'
+                                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-slate-200'
                                 }
               `}
                         >

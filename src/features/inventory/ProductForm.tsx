@@ -52,7 +52,7 @@ export default function ProductForm({
           <input
             value={draft.name}
             onChange={(e) => onChange({ ...draft, name: e.currentTarget.value })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="input"
             placeholder="Ex.: São Miguel Arcanjo"
           />
         </label>
@@ -62,7 +62,7 @@ export default function ProductForm({
           <input
             value={draft.variant}
             onChange={(e) => onChange({ ...draft, variant: e.currentTarget.value })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="input"
             placeholder="Branco / Sombreado"
           />
         </label>
@@ -72,7 +72,7 @@ export default function ProductForm({
           <input
             value={draft.size_cm ?? ''}
             onChange={(e) => onChange({ ...draft, size_cm: toNumberOrNull(e.currentTarget.value) })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="input"
             placeholder="20"
             inputMode="decimal"
           />
@@ -83,7 +83,7 @@ export default function ProductForm({
           <input
             value={draft.sku ?? ''}
             onChange={(e) => onChange({ ...draft, sku: e.currentTarget.value || null })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="input"
             placeholder="SKU interno"
           />
         </label>
@@ -93,7 +93,7 @@ export default function ProductForm({
           <input
             value={draft.category ?? ''}
             onChange={(e) => onChange({ ...draft, category: e.currentTarget.value || null })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="input"
             placeholder="Santos / Decor / Embalagem"
           />
         </label>
@@ -103,7 +103,7 @@ export default function ProductForm({
           <input
             value={draft.material}
             onChange={(e) => onChange({ ...draft, material: e.currentTarget.value })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="input"
             placeholder="Resina"
           />
         </label>
@@ -113,7 +113,7 @@ export default function ProductForm({
           <input
             value={draft.supplier_name ?? ''}
             onChange={(e) => onChange({ ...draft, supplier_name: e.currentTarget.value || null })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="input"
             placeholder="Ex.: Minha Nossa Bela"
           />
         </label>
@@ -123,7 +123,7 @@ export default function ProductForm({
           <input
             value={draft.lead_time_days ?? ''}
             onChange={(e) => onChange({ ...draft, lead_time_days: toNumberOrNull(e.currentTarget.value) })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="input"
             placeholder="3"
             inputMode="numeric"
           />
@@ -134,7 +134,7 @@ export default function ProductForm({
           <input
             value={draft.ml_listing_id ?? ''}
             onChange={(e) => onChange({ ...draft, ml_listing_id: e.currentTarget.value || null })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="input"
             placeholder="MLB123456789"
           />
         </label>
@@ -144,7 +144,7 @@ export default function ProductForm({
           <input
             value={draft.cost}
             onChange={(e) => onChange({ ...draft, cost: Number(e.currentTarget.value) || 0 })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="input"
             inputMode="decimal"
           />
         </label>
@@ -154,7 +154,7 @@ export default function ProductForm({
           <input
             value={draft.price}
             onChange={(e) => onChange({ ...draft, price: Number(e.currentTarget.value) || 0 })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="input"
             inputMode="decimal"
           />
         </label>
@@ -164,7 +164,7 @@ export default function ProductForm({
           <input
             value={draft.stock}
             onChange={(e) => onChange({ ...draft, stock: Number(e.currentTarget.value) || 0 })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="input"
             inputMode="numeric"
           />
         </label>
@@ -174,7 +174,7 @@ export default function ProductForm({
           <input
             value={draft.min_stock}
             onChange={(e) => onChange({ ...draft, min_stock: Number(e.currentTarget.value) || 0 })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="input"
             inputMode="numeric"
           />
         </label>
@@ -184,7 +184,7 @@ export default function ProductForm({
           <select
             value={draft.is_active ? '1' : '0'}
             onChange={(e) => onChange({ ...draft, is_active: e.currentTarget.value === '1' })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="input"
           >
             <option value="1">Ativo</option>
             <option value="0">Inativo</option>
@@ -196,7 +196,7 @@ export default function ProductForm({
           <select
             value={draft.packing_kit_id ?? ''}
             onChange={(e) => onChange({ ...draft, packing_kit_id: e.currentTarget.value || null })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="input"
           >
             <option value="">Sem kit</option>
           </select>
@@ -207,7 +207,7 @@ export default function ProductForm({
           <input
             value={draft.packaging_cost ?? ''}
             onChange={(e) => onChange({ ...draft, packaging_cost: toNumberOrNull(e.currentTarget.value) })}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="input"
             inputMode="decimal"
             placeholder="Deixe vazio para usar o kit"
           />
@@ -219,7 +219,7 @@ export default function ProductForm({
             value={draft.notes ?? ''}
             onChange={(e) => onChange({ ...draft, notes: e.currentTarget.value || null })}
             rows={3}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            className="input"
           />
         </label>
       </div>
@@ -244,3 +244,4 @@ export default function ProductForm({
     </div>
   );
 }
+

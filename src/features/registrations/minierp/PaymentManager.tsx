@@ -33,7 +33,7 @@ export default function PaymentManager() {
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm dark:bg-slate-800">
+            <div className="flex justify-between items-center card p-4">
                 <div>
                     <h3 className="font-medium flex items-center gap-2">
                         <TrendingDown className="text-red-500" size={18} />
@@ -48,36 +48,40 @@ export default function PaymentManager() {
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden dark:bg-slate-900 border dark:border-slate-800">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-50 dark:bg-slate-800/50 text-xs uppercase text-gray-500 font-medium">
+            <div className="card overflow-hidden">
+                <div className="table-scroll">
+                <table className="table-base w-full text-left">
+                    <thead>
                         <tr>
-                            <th className="p-3">Data</th>
-                            <th className="p-3">Descrição</th>
-                            <th className="p-3">Categoria</th>
-                            <th className="p-3">Método</th>
-                            <th className="p-3 text-right">Valor</th>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th>Categoria</th>
+                            <th>Método</th>
+                            <th className="text-right">Valor</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+                    <tbody>
                         {items.map(item => (
-                            <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/30">
-                                <td className="p-3 text-gray-600">{new Date(item.paid_at).toLocaleDateString()}</td>
-                                <td className="p-3 font-medium">{item.notes || 'Sem descrição'} <div className="text-xs font-normal text-gray-400">{item.vendor}</div></td>
-                                <td className="p-3"><span className="px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">{item.category}</span></td>
-                                <td className="p-3 text-gray-600">{item.payment_method}</td>
-                                <td className="p-3 text-right font-medium text-red-600">- R$ {item.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                            <tr key={item.id}>
+                                <td className="table-muted">{new Date(item.paid_at).toLocaleDateString()}</td>
+                                <td className="font-medium">{item.notes || 'Sem descrição'} <div className="text-xs font-normal text-gray-400">{item.vendor}</div></td>
+                                <td><span className="badge badge-neutral">{item.category}</span></td>
+                                <td className="table-muted">{item.payment_method}</td>
+                                <td className="text-right font-medium text-red-600">- R$ {item.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                             </tr>
                         ))}
                     </tbody>
                     <tfoot className="bg-gray-50 dark:bg-slate-800/50 font-semibold text-gray-700">
                         <tr>
-                            <td colSpan={4} className="p-3 text-right">TOTAL</td>
-                            <td className="p-3 text-right text-red-600">R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                            <td colSpan={4} className="text-right">TOTAL</td>
+                            <td className="text-right text-red-600">R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                         </tr>
                     </tfoot>
                 </table>
+                </div>
             </div>
         </div>
     );
 }
+
+

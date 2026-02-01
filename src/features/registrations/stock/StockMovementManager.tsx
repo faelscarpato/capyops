@@ -64,9 +64,9 @@ export default function StockMovementManager() {
             </h3>
 
             <div className="flex gap-4 mb-6 justify-center">
-                <button onClick={() => setType('IN')} className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${type === 'IN' ? 'bg-green-100 text-green-700 ring-2 ring-green-500' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}> Entrada </button>
-                <button onClick={() => setType('ADJUST')} className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${type === 'ADJUST' ? 'bg-blue-100 text-blue-700 ring-2 ring-blue-500' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}> Ajuste / Balanço </button>
-                <button onClick={() => setType('OUT')} className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${type === 'OUT' ? 'bg-red-100 text-red-700 ring-2 ring-red-500' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}> Baixa / Perda </button>
+                <button onClick={() => setType('IN')} className={`btn-ghost ${type === 'IN' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200' : ''}`}>Entrada</button>
+                <button onClick={() => setType('ADJUST')} className={`btn-ghost ${type === 'ADJUST' ? 'bg-indigo-50 text-indigo-700 dark:bg-cyan-400/15 dark:text-cyan-200' : ''}`}>Ajuste / Balanço</button>
+                <button onClick={() => setType('OUT')} className={`btn-ghost ${type === 'OUT' ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-200' : ''}`}>Baixa / Perda</button>
             </div>
 
             <div className="grid gap-4">

@@ -77,7 +77,7 @@ export default function SaleStepReview({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <div className="card p-4">
         <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">Resumo</div>
 
         <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-6">
@@ -115,10 +115,10 @@ export default function SaleStepReview({
         ) : null}
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <div className="card p-4">
         <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">Impacto no estoque</div>
-        <div className="mt-3 overflow-x-auto">
-          <table className="min-w-[720px] w-full text-sm">
+        <div className="mt-3 table-scroll">
+          <table className="table-base min-w-[720px] w-full text-sm">
             <thead className="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400">
               <tr className="border-b border-gray-100 dark:border-slate-800">
                 <th className="py-2 text-left">Produto</th>
@@ -186,3 +186,5 @@ function SummaryBox({
     </div>
   );
 }
+
+

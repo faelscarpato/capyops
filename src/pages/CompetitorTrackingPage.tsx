@@ -139,7 +139,7 @@ export default function CompetitorTrackingPage() {
       />
 
       {err ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-900/30 dark:text-red-200">
+        <div className="alert alert-error">
           {err}
         </div>
       ) : null}
@@ -208,8 +208,8 @@ export default function CompetitorTrackingPage() {
       </SectionCard>
 
       <SectionCard title="Monitoramento" action={<Crosshair className="h-4 w-4 text-gray-500 dark:text-slate-400" />}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="table-scroll">
+          <table className="table-base w-full text-left">
             <thead>
               <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
                 <th className="px-2 py-2 font-semibold">Produto</th>
@@ -267,3 +267,6 @@ export default function CompetitorTrackingPage() {
     </div>
   );
 }
+
+
+

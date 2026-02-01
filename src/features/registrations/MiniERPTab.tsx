@@ -9,7 +9,7 @@ export default function MiniERPTab() {
 
     return (
         <div className="space-y-6">
-            <div className="flex border-b border-gray-200 dark:border-slate-700 overflow-x-auto">
+            <div className="flex border-b border-gray-200 dark:border-slate-700 table-scroll">
                 <button onClick={() => setSubTab('venda')} className={`px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap ${subTab === 'venda' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-gray-500'}`}>
                     Nova Venda
                 </button>
@@ -44,3 +44,4 @@ export default function MiniERPTab() {
         </div>
     );
 }
+

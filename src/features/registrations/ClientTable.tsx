@@ -9,8 +9,8 @@ type Props = {
 
 export default function ClientTable({ items, onEdit, onDelete }: Props) {
     return (
-        <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+        <div className="table-scroll">
+            <table className="table-base min-w-full text-sm">
                 <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-slate-800/60 dark:text-slate-300">
                     <tr>
                         <th className="px-3 py-2 text-left">Nome</th>
@@ -48,3 +48,5 @@ export default function ClientTable({ items, onEdit, onDelete }: Props) {
         </div>
     );
 }
+
+

@@ -50,13 +50,13 @@ export default function ExpenseManager() {
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm dark:bg-slate-800">
+            <div className="flex justify-between items-center card p-4">
                 <h3 className="font-medium">Despesas Operacionais</h3>
                 <div className="flex gap-2 items-center">
                     <div className="relative">
                         <Search className="absolute left-2 top-1.5 text-gray-400 w-4 h-4" />
                         <input
-                            className="pl-8 pr-2 py-1 text-sm border rounded dark:bg-slate-900 dark:border-slate-700 w-48"
+                            className="input w-full pl-8 sm:w-48"
                             placeholder="Filtrar..."
                             value={filter}
                             onChange={e => setFilter(e.target.value)}
@@ -72,7 +72,7 @@ export default function ExpenseManager() {
             </div>
 
             {editing && (
-                <div className="bg-gray-50 p-4 rounded-lg border dark:bg-slate-800/50">
+                <div className="card p-4">
                     <div className="grid grid-cols-2 gap-4">
                         <label className="text-xs block">Categoria
                             <input className="input w-full mt-1" value={editing.category || ''} onChange={e => setEditing({ ...editing, category: e.target.value })} />
@@ -88,28 +88,32 @@ export default function ExpenseManager() {
                 </div>
             )}
 
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden dark:bg-slate-900 border dark:border-slate-800">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-50 dark:bg-slate-800/50 text-xs uppercase text-gray-500">
+            <div className="card overflow-hidden">
+                <div className="table-scroll">
+                <table className="table-base w-full text-left">
+                    <thead>
                         <tr>
-                            <th className="p-3">Data</th>
-                            <th className="p-3">Categoria</th>
-                            <th className="p-3">Fornecedor</th>
-                            <th className="p-3 text-right">Valor</th>
+                            <th>Data</th>
+                            <th>Categoria</th>
+                            <th>Fornecedor</th>
+                            <th className="text-right">Valor</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody>
                         {filtered.map(ex => (
                             <tr key={ex.id}>
-                                <td className="p-3">{new Date(ex.paid_at).toLocaleDateString()}</td>
-                                <td className="p-3">{ex.category}</td>
-                                <td className="p-3">{ex.vendor || '-'}</td>
-                                <td className="p-3 text-right font-medium">R$ {ex.amount.toFixed(2)}</td>
+                                <td>{new Date(ex.paid_at).toLocaleDateString()}</td>
+                                <td>{ex.category}</td>
+                                <td className="table-muted">{ex.vendor || '-'}</td>
+                                <td className="text-right font-medium">R$ {ex.amount.toFixed(2)}</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     );
 }
+
+

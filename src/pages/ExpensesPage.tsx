@@ -51,7 +51,7 @@ export default function ExpensesPage() {
         actions={
           <div className="flex flex-wrap gap-2 items-center">
             <input
-              className="input px-3 py-1 text-sm w-48"
+              className="input w-full px-3 py-1 text-sm sm:w-48"
               placeholder="Filtrar..."
               value={filter}
               onChange={e => setFilter(e.target.value)}
@@ -70,20 +70,20 @@ export default function ExpensesPage() {
       />
 
       {err ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-900/30 dark:text-red-200">
+        <div className="alert alert-error">
           {err}
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 dark:bg-slate-900 dark:border-slate-800 flex items-center justify-between">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="card flex items-center justify-between p-6">
           <div>
             <p className="text-sm font-medium text-gray-500 uppercase">Total Despesas (Geral)</p>
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
               {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </h3>
           </div>
-          <div className="p-3 bg-red-50 rounded-full text-red-600 dark:bg-red-900/30">
+          <div className="rounded-full bg-red-50 p-3 text-red-600 dark:bg-red-900/30">
             <ArrowUpRight size={24} />
           </div>
         </div>
@@ -91,30 +91,30 @@ export default function ExpensesPage() {
       </div>
 
       <SectionCard title="Histórico de Despesas">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="table-scroll">
+          <table className="table-base w-full text-left">
             <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
-                <th className="px-2 py-2 font-semibold">Data</th>
-                <th className="px-2 py-2 font-semibold">Categoria</th>
-                <th className="px-2 py-2 font-semibold">Fornecedor</th>
-                <th className="px-2 py-2 font-semibold">Pagamento</th>
-                <th className="px-2 py-2 text-right font-semibold">Valor</th>
+              <tr>
+                <th>Data</th>
+                <th>Categoria</th>
+                <th>Fornecedor</th>
+                <th>Pagamento</th>
+                <th className="text-right">Valor</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+            <tbody>
               {filtered.map((ex) => (
-                <tr key={ex.id} className="border-b border-gray-100 hover:bg-gray-50 dark:border-slate-800 dark:hover:bg-slate-900">
-                  <td className="px-2 py-3 text-gray-600 dark:text-gray-300">
+                <tr key={ex.id}>
+                  <td className="table-muted">
                     {new Date(ex.paid_at).toLocaleDateString()}
                   </td>
-                  <td className="px-2 py-3 font-medium text-gray-900 dark:text-slate-100">
+                  <td>
                     {ex.category}
                     {ex.notes && <div className="text-xs text-gray-400 font-normal">{ex.notes}</div>}
                   </td>
-                  <td className="px-2 py-3 text-gray-600 dark:text-gray-400">{ex.vendor || '—'}</td>
-                  <td className="px-2 py-3 text-gray-600 dark:text-gray-400">{ex.payment_method || '—'}</td>
-                  <td className="px-2 py-3 text-right font-bold text-gray-700 dark:text-slate-200">
+                  <td className="table-muted">{ex.vendor || '—'}</td>
+                  <td className="table-muted">{ex.payment_method || '—'}</td>
+                  <td className="text-right font-bold">
                     {ex.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </td>
                 </tr>
@@ -135,3 +135,5 @@ export default function ExpensesPage() {
     </div>
   );
 }
+
+

@@ -69,7 +69,7 @@ export default function SupplyManager() {
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm dark:bg-slate-800">
+            <div className="flex justify-between items-center card p-4">
                 <div className="flex gap-2 items-center w-1/2">
                     <Search className="w-4 h-4 text-gray-500" />
                     <input
@@ -90,7 +90,7 @@ export default function SupplyManager() {
             </div>
 
             {editing && (
-                <div className="bg-gray-50 p-4 rounded-lg border dark:bg-slate-800/50 dark:border-slate-700">
+                <div className="card p-4">
                     <h3 className="font-semibold text-sm mb-4">{editing.id ? 'Editar' : 'Novo'} Insumo</h3>
                     <div className="grid grid-cols-2 gap-4">
                         <label className="block text-xs">
@@ -117,31 +117,32 @@ export default function SupplyManager() {
                 </div>
             )}
 
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden dark:bg-slate-900 border dark:border-slate-800">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-gray-50 dark:bg-slate-800/50 text-xs uppercase text-gray-500 font-medium">
+            <div className="card overflow-hidden">
+                <div className="table-scroll">
+                <table className="table-base w-full text-left">
+                    <thead>
                         <tr>
-                            <th className="p-3">Nome</th>
-                            <th className="p-3">Categoria</th>
-                            <th className="p-3 text-right">Custo</th>
-                            <th className="p-3 text-center">Estoque</th>
-                            <th className="p-3 text-right">Ações</th>
+                            <th>Nome</th>
+                            <th>Categoria</th>
+                            <th className="text-right">Custo</th>
+                            <th className="text-center">Estoque</th>
+                            <th className="text-right">Ações</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+                    <tbody>
                         {filtered.map(item => (
-                            <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/30">
-                                <td className="p-3 font-medium">{item.name}</td>
-                                <td className="p-3"><span className="px-2 py-1 rounded bg-gray-100 text-gray-600 text-xs dark:bg-slate-800 dark:text-gray-400">{item.category}</span></td>
-                                <td className="p-3 text-right">R$ {item.cost_per_unit?.toFixed(2)}</td>
-                                <td className="p-3 text-center">
-                                    <span className={item.stock_qty <= (item.min_qty || 0) ? 'text-red-500 font-bold' : 'text-green-500'}>
+                            <tr key={item.id}>
+                                <td className="font-medium">{item.name}</td>
+                                <td><span className="badge badge-neutral">{item.category}</span></td>
+                                <td className="text-right">R$ {item.cost_per_unit?.toFixed(2)}</td>
+                                <td className="text-center">
+                                    <span className={item.stock_qty <= (item.min_qty || 0) ? 'badge badge-danger' : 'badge badge-success'}>
                                         {item.stock_qty}
                                     </span>
                                 </td>
-                                <td className="p-3 text-right flex justify-end gap-2">
-                                    <button onClick={() => setEditing(item)} className="p-1 hover:bg-gray-200 rounded text-blue-500"><Edit2 size={14} /></button>
-                                    <button onClick={() => handleToggle(item)} className="p-1 hover:bg-gray-200 rounded text-red-500"><Trash2 size={14} /></button>
+                                <td className="text-right flex justify-end gap-2">
+                                    <button onClick={() => setEditing(item)} className="btn-ghost p-1 text-blue-500"><Edit2 size={14} /></button>
+                                    <button onClick={() => handleToggle(item)} className="btn-ghost p-1 text-red-500"><Trash2 size={14} /></button>
                                 </td>
                             </tr>
                         ))}
@@ -150,7 +151,10 @@ export default function SupplyManager() {
                         )}
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     );
 }
+
+

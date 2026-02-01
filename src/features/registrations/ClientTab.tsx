@@ -96,7 +96,7 @@ export default function ClientTab() {
                     action={
                         <div className="flex gap-2">
                             <input
-                                className="px-3 py-1 text-sm border rounded dark:bg-slate-900 dark:border-slate-700"
+                                className="btn-ghost text-xs"
                                 placeholder="Buscar..."
                                 value={filter}
                                 onChange={e => setFilter(e.target.value)}
@@ -129,3 +129,4 @@ export default function ClientTab() {
         </div>
     );
 }
+

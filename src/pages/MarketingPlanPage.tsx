@@ -96,15 +96,15 @@ export default function MarketingPlanPage() {
       </SectionCard>
 
       <SectionCard title="Kit inicial fechado (mix recomendado)">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="table-scroll">
+          <table className="table-base w-full text-left">
             <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
-                <th className="px-2 py-2 font-semibold">Produto</th>
-                <th className="px-2 py-2 font-semibold">Custo (branco)</th>
-                <th className="px-2 py-2 font-semibold">Custo (sombreado)</th>
-                <th className="px-2 py-2 font-semibold">Preco ML (branco)</th>
-                <th className="px-2 py-2 font-semibold">Preco ML (sombreado)</th>
+              <tr>
+                <th>Produto</th>
+                <th>Custo (branco)</th>
+                <th>Custo (sombreado)</th>
+                <th>Preco ML (branco)</th>
+                <th>Preco ML (sombreado)</th>
               </tr>
             </thead>
             <tbody>
@@ -115,11 +115,9 @@ export default function MarketingPlanPage() {
                 ['Nossa Senhora Aparecida 23 cm', 'R$ 45', 'R$ 50', 'R$ 169,90', 'R$ 189,90'],
                 ['São Miguel Veronese 30 cm', 'R$ 90', 'R$ 100', 'R$ 299,90', 'R$ 349,90']
               ].map((row) => (
-                <tr key={row[0]} className="border-b border-gray-100 dark:border-slate-800">
+                <tr key={row[0]}>
                   {row.map((cell) => (
-                    <td key={cell} className="px-2 py-3 text-sm text-gray-700 dark:text-slate-200">
-                      {cell}
-                    </td>
+                    <td key={cell}>{cell}</td>
                   ))}
                 </tr>
               ))}
@@ -132,14 +130,14 @@ export default function MarketingPlanPage() {
       </SectionCard>
 
       <SectionCard title="Estoque inicial recomendado (baixo risco)">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="table-scroll">
+          <table className="table-base w-full text-left">
             <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
-                <th className="px-2 py-2 font-semibold">Produto</th>
-                <th className="px-2 py-2 font-semibold">Qtd</th>
-                <th className="px-2 py-2 font-semibold">Custo unit</th>
-                <th className="px-2 py-2 font-semibold">Total</th>
+              <tr>
+                <th>Produto</th>
+                <th>Qtd</th>
+                <th>Custo unit</th>
+                <th>Total</th>
               </tr>
             </thead>
             <tbody>
@@ -152,11 +150,9 @@ export default function MarketingPlanPage() {
                 ['Aparecida 23 cm Branco', '3', '45', '135'],
                 ['São Miguel Veronese Branco', '2', '90', '180']
               ].map((row) => (
-                <tr key={row[0]} className="border-b border-gray-100 dark:border-slate-800">
+                <tr key={row[0]}>
                   {row.map((cell) => (
-                    <td key={cell} className="px-2 py-3 text-sm text-gray-700 dark:text-slate-200">
-                      {cell}
-                    </td>
+                    <td key={cell}>{cell}</td>
                   ))}
                 </tr>
               ))}
@@ -172,7 +168,7 @@ export default function MarketingPlanPage() {
             ['Pecas 20-23 cm', 'Peso: 0,9 kg (produto + embalagem)', 'Caixa: 28 x 18 x 18 cm', 'Classe de frete: Medio'],
             ['Pecas 30 cm', 'Peso: 2,2 kg', 'Caixa: 38 x 22 x 22 cm', 'Classe de frete: Grande']
           ].map((item) => (
-            <div key={item[0]} className="rounded-lg border border-gray-200 bg-white p-4 text-sm dark:border-slate-800 dark:bg-slate-900">
+            <div key={item[0]} className="card p-4 text-sm">
               <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">{item[0]}</div>
               <div className="mt-1 space-y-1 text-sm text-gray-500 dark:text-slate-400">
                 <div>{item[1]}</div>
@@ -185,14 +181,14 @@ export default function MarketingPlanPage() {
       </SectionCard>
 
       <SectionCard title="Preco final ajustado (frete + taxa ML)">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="table-scroll">
+          <table className="table-base w-full text-left">
             <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
-                <th className="px-2 py-2 font-semibold">Produto</th>
-                <th className="px-2 py-2 font-semibold">Preco branco</th>
-                <th className="px-2 py-2 font-semibold">Preco sombreado</th>
-                <th className="px-2 py-2 font-semibold">Lucro estimado</th>
+              <tr>
+                <th>Produto</th>
+                <th>Preco branco</th>
+                <th>Preco sombreado</th>
+                <th>Lucro estimado</th>
               </tr>
             </thead>
             <tbody>
@@ -203,11 +199,9 @@ export default function MarketingPlanPage() {
                 ['Aparecida 23 cm', 'R$ 169,90', 'R$ 189,90', 'R$ 70-90'],
                 ['São Miguel Veronese 30 cm', 'R$ 299,90', 'R$ 349,90', 'R$ 120-170']
               ].map((row) => (
-                <tr key={row[0]} className="border-b border-gray-100 dark:border-slate-800">
+                <tr key={row[0]}>
                   {row.map((cell) => (
-                    <td key={cell} className="px-2 py-3 text-sm text-gray-700 dark:text-slate-200">
-                      {cell}
-                    </td>
+                    <td key={cell}>{cell}</td>
                   ))}
                 </tr>
               ))}
@@ -345,12 +339,12 @@ Envio rapido em ate 24h uteis apos a compra.`}
       </SectionCard>
 
       <SectionCard title="Criterio objetivo para migrar para Full">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="table-scroll">
+          <table className="table-base w-full text-left">
             <thead>
-              <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
-                <th className="px-2 py-2 font-semibold">Criterio</th>
-                <th className="px-2 py-2 font-semibold">Regra minima</th>
+              <tr>
+                <th>Criterio</th>
+                <th>Regra minima</th>
               </tr>
             </thead>
             <tbody>
@@ -362,9 +356,9 @@ Envio rapido em ate 24h uteis apos a compra.`}
                 ['Giro mensal', 'Minimo 8 un/mes'],
                 ['Fornecedor garantido', 'Sim']
               ].map((row) => (
-                <tr key={row[0]} className="border-b border-gray-100 dark:border-slate-800">
-                  <td className="px-2 py-3 text-sm text-gray-700 dark:text-slate-200">{row[0]}</td>
-                  <td className="px-2 py-3 text-sm text-gray-700 dark:text-slate-200">{row[1]}</td>
+                <tr key={row[0]}>
+                  <td>{row[0]}</td>
+                  <td>{row[1]}</td>
                 </tr>
               ))}
             </tbody>
@@ -406,3 +400,5 @@ Envio rapido em ate 24h uteis apos a compra.`}
     </div>
   );
 }
+
+

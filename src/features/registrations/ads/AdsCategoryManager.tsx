@@ -19,7 +19,7 @@ export default function AdsCategoryManager() {
 
     return (
         <div className="space-y-4">
-            <div className="bg-white p-4 rounded-lg shadow-sm dark:bg-slate-800 border dark:border-slate-700">
+            <div className="card p-4">
                 <h3 className="font-medium flex items-center gap-2 mb-4">
                     <Tag size={18} /> Categorias Detectadas (Baseado em Produtos)
                 </h3>
@@ -39,3 +39,4 @@ export default function AdsCategoryManager() {
         </div>
     );
 }
+
