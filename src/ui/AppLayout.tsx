@@ -17,7 +17,8 @@ import {
   FileText,
   TrendingUp,
   Settings,
-  History
+  History,
+  Link2
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useThemeMode } from './ThemeModeProvider';
@@ -28,6 +29,7 @@ import logoCapyops from '../assets/logocapyops.png';
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/anuncios', label: 'Anuncios', icon: Grid2x2 },
+  { to: '/integracoes/mercado-livre', label: 'Integracoes ML', icon: Link2 },
   { to: '/configuracoes', label: 'Configuracoes', icon: Settings },
   { to: '/estoque', label: 'Estoque', icon: Package },
   { to: '/cadastros', label: 'Cadastros', icon: ClipboardCheck },
@@ -55,6 +57,7 @@ export default function AppLayout() {
     return {
       '/': path === '/',
       '/anuncios': path.startsWith('/anuncios'),
+      '/integracoes/mercado-livre': path.startsWith('/integracoes/mercado-livre'),
 
       '/configuracoes': path.startsWith('/configuracoes'),
       '/estoque': path.startsWith('/estoque'),

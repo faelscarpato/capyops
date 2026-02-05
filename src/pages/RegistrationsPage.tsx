@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PageHeader from '../ui/PageHeader';
 import SectionCard from '../ui/SectionCard';
 import ProductTab from '../features/registrations/ProductTab';
@@ -25,6 +26,19 @@ type TabId = typeof TABS[number]['id'];
 
 export default function RegistrationsPage() {
     const [activeTab, setActiveTab] = useState<TabId>('produtos');
+    const [searchParams] = useSearchParams();
+
+    useEffect(() => {
+        const raw = searchParams.get('tab');
+        if (!raw) return;
+        const normalized = raw === 'minierp' ? 'erp' : raw;
+        const allowed = TABS.map((t) => t.id);
+        if (allowed.includes(normalized as TabId)) {
+            setActiveTab(normalized as TabId);
+        }
+    }, [searchParams]);
+
+    const sub = searchParams.get('sub') ?? undefined;
 
     return (
         <div className="space-y-6">
@@ -55,12 +69,12 @@ export default function RegistrationsPage() {
 
             <div className="mt-4">
                 {activeTab === 'produtos' && <ProductTab />}
-                {activeTab === 'logistica' && <LogisticsTab />}
+                {activeTab === 'logistica' && <LogisticsTab initialSubTab={sub} />}
                 {activeTab === 'clientes' && <ClientTab />}
                 {activeTab === 'fornecedores' && <SupplierTab />}
                 {activeTab === 'anuncios' && <AdsTab />}
                 {activeTab === 'estoque' && <StockTab />}
-                {activeTab === 'erp' && <MiniERPTab />}
+                {activeTab === 'erp' && <MiniERPTab initialSubTab={sub} />}
             </div>
         </div>
     );

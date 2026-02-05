@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Bell, Crosshair, MessageCircle, ChevronRight } from 'lucide-react';
-import { getCompetitorAlertCount, getPendingMlQuestionsCount, listCompetitorAlerts, listPendingMlQuestions } from '../lib/db';
+import { Bell, Crosshair, MessageCircle, ChevronRight, Link2 } from 'lucide-react';
+import { getCompetitorAlertCount, getPendingMlQuestionsCount, listCompetitorAlerts, listPendingMlQuestions, getUnreadInternalEventsCount, listInternalEvents, markInternalEventRead } from '../lib/db';
 import type { CompetitorTracking, MlQuestion } from '../lib/types';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
 function fmtDateTime(value?: string | null) {
   if (!value) return '—';
@@ -19,24 +20,28 @@ export default function AlertsPopover() {
   const [competitorAlerts, setCompetitorAlerts] = useState<CompetitorTracking[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [competitorCount, setCompetitorCount] = useState(0);
+  const [eventsCount, setEventsCount] = useState(0);
+  const [events, setEvents] = useState<any[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  const total = useMemo(() => pendingCount + competitorCount, [pendingCount, competitorCount]);
+  const total = useMemo(() => pendingCount + competitorCount + eventsCount, [pendingCount, competitorCount, eventsCount]);
 
   async function refresh(preview: boolean) {
     setErr(null);
     setLoading(true);
     try {
-      const [qCount, cCount] = await Promise.all([getPendingMlQuestionsCount(), getCompetitorAlertCount()]);
+      const [qCount, cCount, eCount] = await Promise.all([getPendingMlQuestionsCount(), getCompetitorAlertCount(), getUnreadInternalEventsCount()]);
       setPendingCount(qCount);
       setCompetitorCount(cCount);
+      setEventsCount(eCount);
 
       if (preview) {
-        const [q, c] = await Promise.all([listPendingMlQuestions(5), listCompetitorAlerts(5)]);
+        const [q, c, ev] = await Promise.all([listPendingMlQuestions(5), listCompetitorAlerts(5), listInternalEvents(5)]);
         setPendingQuestions(q);
         setCompetitorAlerts(c);
+        setEvents(ev);
       }
     } catch (e: any) {
       setErr(e?.message ?? 'Erro ao carregar alertas.');
@@ -50,6 +55,17 @@ export default function AlertsPopover() {
     refresh(false);
     const t = window.setInterval(() => refresh(false), 20000);
     return () => window.clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('events-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => refresh(false))
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -211,6 +227,50 @@ export default function AlertsPopover() {
               ) : (
                 <div className="rounded-lg border border-dashed border-gray-200 px-3 py-3 text-sm text-gray-500 dark:border-slate-800 dark:text-slate-400">
                   {competitorCount > 0 ? 'Carregando prévia…' : 'Nenhum alerta de concorrente.'}
+                </div>
+              )}
+            </div>
+
+            {/* Eventos ML */}
+            <div className="px-4 pb-4 pt-4">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+                  <Link2 className="h-4 w-4" />
+                  Mercado Livre
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline dark:text-cyan-300"
+                  onClick={() => {
+                    setOpen(false);
+                    navigate('/integracoes/mercado-livre');
+                  }}
+                >
+                  Ver integração <ChevronRight className="h-3 w-3" />
+                </button>
+              </div>
+
+              {events.length ? (
+                <div className="space-y-2">
+                  {events.map((ev) => (
+                    <button
+                      key={ev.id}
+                      type="button"
+                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-sm hover:bg-gray-50 dark:border-slate-800 dark:bg-slate-950/20 dark:hover:bg-slate-800"
+                      onClick={async () => {
+                        setOpen(false);
+                        await markInternalEventRead(ev.id);
+                        navigate('/integracoes/mercado-livre');
+                      }}
+                    >
+                      <div className="truncate font-medium text-gray-900 dark:text-slate-100">{ev.title ?? 'Evento ML'}</div>
+                      <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">{ev.body ?? 'Nova atualização'}</div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-gray-200 px-3 py-3 text-sm text-gray-500 dark:border-slate-800 dark:text-slate-400">
+                  Nenhum evento recente.
                 </div>
               )}
             </div>

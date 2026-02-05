@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, Filter, Download, AlertTriangle, Package } from 'lucide-react';
 import PageHeader from '../ui/PageHeader';
 import SectionCard from '../ui/SectionCard';
@@ -21,6 +22,7 @@ function exportToCSV(data: any[], filename: string) {
 }
 
 export default function InventoryPage() {
+  const [searchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,6 +81,8 @@ export default function InventoryPage() {
     }).filter(Boolean) as any[]; // Remove nulls
   }, [products, sales]);
 
+  const filterFlag = (searchParams.get('f') || '').toLowerCase();
+
   const filtered = metrics.filter(p => {
     if (!p) return false;
     if (hideInactive && !p.is_active) return false;
@@ -86,6 +90,10 @@ export default function InventoryPage() {
     if (search) {
       const s = search.toLowerCase();
       if (!p.name?.toLowerCase().includes(s) && !p.sku?.toLowerCase().includes(s)) return false;
+    }
+    if (filterFlag === 'critical') {
+      const min = Number(p.min_stock ?? 0);
+      if (Number(p.stock ?? 0) > min) return false;
     }
     return true;
   });
