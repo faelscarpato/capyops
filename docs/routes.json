@@ -1,0 +1,24 @@
+{
+  "public": ["/login"],
+  "protected": [
+    "/",
+    "/estoque",
+    "/insumos",
+    "/cadastros",
+    "/despesas",
+    "/kits",
+    "/orcamentos",
+    "/nova-venda",
+    "/relatorios",
+    "/anuncios",
+    "/sales-history",
+    "/precificador",
+    "/perguntas",
+    "/competidores",
+    "/configuracoes",
+    "/plano-marketing",
+    "/integracoes/mercado-livre",
+    "/integracoes/mercado-livre/callback"
+  ],
+  "fallback": ["*"]
+}

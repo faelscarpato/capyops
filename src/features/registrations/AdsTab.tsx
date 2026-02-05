@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import AdsCategoryManager from './ads/AdsCategoryManager';
+import AdsSkuManager from './ads/AdsSkuManager';
+import AdsPlatformsManager from './ads/AdsPlatformsManager';
+import AdsPaidManager from './ads/AdsPaidManager';
+import AdsOrganicManager from './ads/AdsOrganicManager';
 
 export default function AdsTab() {
     const [subTab, setSubTab] = useState<'categorias' | 'sku' | 'plataformas' | 'pagos' | 'organicos'>('categorias');
@@ -26,10 +30,10 @@ export default function AdsTab() {
 
             <div className="min-h-[400px] pt-4">
                 {subTab === 'categorias' && <AdsCategoryManager />}
-                {subTab === 'sku' && <div className="p-8 text-center text-gray-500">Gestão de SKUs (Em breve)</div>}
-                {subTab === 'plataformas' && <div className="p-8 text-center text-gray-500">Configuração de Plataformas (ML, Shopee)</div>}
-                {subTab === 'pagos' && <div className="p-8 text-center text-gray-500">Gerenciador de Ads (Em breve)</div>}
-                {subTab === 'organicos' && <div className="p-8 text-center text-gray-500">Listagem de Anúncios Orgânicos</div>}
+                {subTab === 'sku' && <AdsSkuManager />}
+                {subTab === 'plataformas' && <AdsPlatformsManager />}
+                {subTab === 'pagos' && <AdsPaidManager />}
+                {subTab === 'organicos' && <AdsOrganicManager />}
             </div>
         </div>
     );

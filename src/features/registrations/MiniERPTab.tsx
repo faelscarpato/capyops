@@ -1,11 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ExpenseManager from './minierp/ExpenseManager';
 import NewSaleWizard from '../../components/sales/NewSaleWizard';
 import PaymentManager from './minierp/PaymentManager';
 import PurchaseQuoteManager from './minierp/PurchaseQuoteManager';
+import ReturnsManager from './minierp/ReturnsManager';
+import FeesManager from './minierp/FeesManager';
+import TaxesManager from './minierp/TaxesManager';
 
-export default function MiniERPTab() {
-    const [subTab, setSubTab] = useState<'venda' | 'despesas' | 'cotacoes' | 'pagamentos' | 'devolucao' | 'taxas' | 'impostos'>('despesas');
+type SubTab = 'venda' | 'despesas' | 'cotacoes' | 'pagamentos' | 'devolucao' | 'taxas' | 'impostos';
+
+export default function MiniERPTab({ initialSubTab }: { initialSubTab?: string }) {
+    const [subTab, setSubTab] = useState<SubTab>('despesas');
+
+    useEffect(() => {
+        if (!initialSubTab) return;
+        const allowed: SubTab[] = ['venda', 'despesas', 'cotacoes', 'pagamentos', 'devolucao', 'taxas', 'impostos'];
+        if (allowed.includes(initialSubTab as SubTab)) setSubTab(initialSubTab as SubTab);
+    }, [initialSubTab]);
 
     return (
         <div className="space-y-6">
@@ -38,8 +49,9 @@ export default function MiniERPTab() {
                 {subTab === 'venda' && <div className="p-4 bg-gray-50 dark:bg-slate-900 rounded-lg"><NewSaleWizard /></div>}
                 {subTab === 'cotacoes' && <PurchaseQuoteManager />}
                 {subTab === 'pagamentos' && <PaymentManager />}
-
-                {subTab !== 'despesas' && subTab !== 'venda' && subTab !== 'cotacoes' && subTab !== 'pagamentos' && <div className="p-8 text-center text-gray-500">Módulo em desenvolvimento...</div>}
+                {subTab === 'devolucao' && <ReturnsManager />}
+                {subTab === 'taxas' && <FeesManager />}
+                {subTab === 'impostos' && <TaxesManager />}
             </div>
         </div>
     );

@@ -1,0 +1,31 @@
+flowchart TD
+  Sidebar[AppLayout Sidebar] --> Dashboard[/]
+  Sidebar --> Anuncios[/anuncios]
+  Sidebar --> Integracoes[/integracoes/mercado-livre]
+  Sidebar --> Config[/configuracoes]
+  Sidebar --> Estoque[/estoque]
+  Sidebar --> Cadastros[/cadastros]
+  Sidebar --> Insumos[/insumos]
+  Sidebar --> Despesas[/despesas]
+  Sidebar --> Kits[/kits]
+  Sidebar --> Orcamentos[/orcamentos]
+  Sidebar --> SalesHistory[/sales-history]
+  Sidebar --> Precificador[/precificador]
+  Sidebar --> Relatorios[/relatorios]
+  Sidebar --> PlanoMkt[/plano-marketing]
+
+  Alerts[AlertsPopover] --> Perguntas[/perguntas]
+  Alerts --> Competidores[/competidores]
+  Alerts --> PlanoMkt
+  Alerts --> Integracoes
+
+  Dashboard --> Relatorios
+  Dashboard --> NovaVenda[/nova-venda]
+  Dashboard --> Estoque
+  Dashboard --> Config
+
+  MarketingPlan --> Perguntas
+  MarketingPlan --> Competidores
+  MarketingPlan --> Anuncios
+
+  OAuth[OAuth Callback] --> Callback[/integracoes/mercado-livre/callback]

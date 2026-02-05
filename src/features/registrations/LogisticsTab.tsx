@@ -1,10 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import SupplyManager from './logistics/SupplyManager';
 import PackingKitManager from './logistics/PackingKitManager';
 import ProductWeightManager from './logistics/ProductWeightManager';
+import PackagingManager from './logistics/PackagingManager';
+import ShippingRatesManager from './logistics/ShippingRatesManager';
 
-export default function LogisticsTab() {
-    const [subTab, setSubTab] = useState<'insumos' | 'kits' | 'pesos' | 'embalagens' | 'taxas'>('insumos');
+type SubTab = 'insumos' | 'kits' | 'pesos' | 'embalagens' | 'taxas';
+
+export default function LogisticsTab({ initialSubTab }: { initialSubTab?: string }) {
+    const [subTab, setSubTab] = useState<SubTab>('insumos');
+
+    useEffect(() => {
+        if (!initialSubTab) return;
+        const allowed: SubTab[] = ['insumos', 'kits', 'pesos', 'embalagens', 'taxas'];
+        if (allowed.includes(initialSubTab as SubTab)) setSubTab(initialSubTab as SubTab);
+    }, [initialSubTab]);
 
     return (
         <div className="space-y-6">
@@ -45,8 +55,8 @@ export default function LogisticsTab() {
                 {subTab === 'insumos' && <SupplyManager />}
                 {subTab === 'kits' && <PackingKitManager />}
                 {subTab === 'pesos' && <ProductWeightManager />}
-                {subTab === 'embalagens' && <div className="p-8 text-center text-gray-500">Gestão de Embalagens (Em breve)</div>}
-                {subTab === 'taxas' && <div className="p-8 text-center text-gray-500">Gestão de Taxas e Prazos (Em breve)</div>}
+                {subTab === 'embalagens' && <PackagingManager />}
+                {subTab === 'taxas' && <ShippingRatesManager />}
             </div>
         </div>
     );

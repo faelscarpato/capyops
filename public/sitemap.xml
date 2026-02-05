@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Painel privado: rotas internas listadas para documentação -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>/login</loc></url>
+  <url><loc>/</loc></url>
+  <url><loc>/estoque</loc></url>
+  <url><loc>/insumos</loc></url>
+  <url><loc>/cadastros</loc></url>
+  <url><loc>/despesas</loc></url>
+  <url><loc>/kits</loc></url>
+  <url><loc>/orcamentos</loc></url>
+  <url><loc>/nova-venda</loc></url>
+  <url><loc>/relatorios</loc></url>
+  <url><loc>/anuncios</loc></url>
+  <url><loc>/sales-history</loc></url>
+  <url><loc>/precificador</loc></url>
+  <url><loc>/perguntas</loc></url>
+  <url><loc>/competidores</loc></url>
+  <url><loc>/configuracoes</loc></url>
+  <url><loc>/plano-marketing</loc></url>
+  <url><loc>/integracoes/mercado-livre</loc></url>
+  <url><loc>/integracoes/mercado-livre/callback</loc></url>
+</urlset>

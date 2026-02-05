@@ -16,6 +16,9 @@ import PackingKitsPage from './pages/PackingKitsPage';
 import QuotesPage from './pages/QuotesPage';
 import QuestionsPage from './pages/QuestionsPage';
 import CompetitorTrackingPage from './pages/CompetitorTrackingPage';
+import NewSalePage from './pages/NewSalePage';
+import IntegrationsMeliPage from './pages/IntegrationsMeliPage';
+import IntegrationsMeliCallbackPage from './pages/IntegrationsMeliCallbackPage';
 
 import SettingsPage from './pages/SettingsPage';
 import ListingsPage from './pages/ListingsPage';
@@ -52,6 +55,7 @@ export default function App() {
           <Route path="despesas" element={<ExpensesPage />} />
           <Route path="kits" element={<PackingKitsPage />} />
           <Route path="orcamentos" element={<QuotesPage />} />
+          <Route path="nova-venda" element={<NewSalePage />} />
 
           <Route path="relatorios" element={<ReportsPage />} />
           <Route path="anuncios" element={<ListingsPage />} />
@@ -62,6 +66,8 @@ export default function App() {
 
           <Route path="configuracoes" element={<SettingsPage />} />
           <Route path="plano-marketing" element={<MarketingPlanPage />} />
+          <Route path="integracoes/mercado-livre" element={<IntegrationsMeliPage />} />
+          <Route path="integracoes/mercado-livre/callback" element={<IntegrationsMeliCallbackPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

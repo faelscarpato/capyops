@@ -14,7 +14,7 @@ export default function StockMovementManager() {
     useEffect(() => { load(); }, []);
 
     async function load() {
-        const p = await listProducts();
+        const p = await listProducts({ includeInactive: true });
         setProducts(p);
     }
 
@@ -47,8 +47,8 @@ export default function StockMovementManager() {
             setQuantity(0);
             setNotes('');
             load(); // Refresh products to get new stock
-        } catch (e) {
-            alert('Erro ao registrar movimentação.');
+        } catch (e: any) {
+            alert(e?.message ?? 'Erro ao registrar movimentação.');
         } finally {
             setLoading(false);
         }
@@ -75,7 +75,9 @@ export default function StockMovementManager() {
                     <select className="input" value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)}>
                         <option value="">Selecione um produto...</option>
                         {products.map(p => (
-                            <option key={p.id} value={p.id}>{p.name} - {p.variant} (Atual: {p.stock})</option>
+                            <option key={p.id} value={p.id}>
+                                {p.name} {p.size_cm ? `${p.size_cm}cm` : ''} - {p.variant} {p.sku ? `• ${p.sku}` : ''} (Atual: {p.stock})
+                            </option>
                         ))}
                     </select>
                 </div>

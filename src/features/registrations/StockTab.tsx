@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import StockMovementManager from './stock/StockMovementManager';
+import CancelLog from './stock/CancelLog';
 
 export default function StockTab() {
     const [subTab, setSubTab] = useState<'entrada' | 'ajustes' | 'cancelamentos'>('entrada');
@@ -22,7 +23,7 @@ export default function StockTab() {
                 {subTab === 'entrada' && <StockMovementManager />}
                 {subTab === 'ajustes' && <StockMovementManager />}
                 {/* Reusing Manager for now as it handles all types, but UI can be specific later */}
-                {subTab === 'cancelamentos' && <div className="p-8 text-center text-gray-500">Histórico de Cancelamentos (Em breve)</div>}
+                {subTab === 'cancelamentos' && <CancelLog />}
             </div>
         </div>
     );

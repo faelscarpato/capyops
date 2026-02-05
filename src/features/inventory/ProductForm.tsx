@@ -199,6 +199,11 @@ export default function ProductForm({
             className="input"
           >
             <option value="">Sem kit</option>
+            {(packingKits ?? []).map((k) => (
+              <option key={k.id} value={k.id}>
+                {k.name}
+              </option>
+            ))}
           </select>
         </label>
 

@@ -37,11 +37,17 @@ export async function listProducts(opts?: { includeInactive?: boolean }): Promis
 }
 
 export async function upsertProduct(p: Partial<Product> & { name: string; variant: string }): Promise<void> {
+  if (p.ml_listing_id) {
+    await ensureMlListing(p.ml_listing_id);
+  }
   const { error } = await supabase.from('products').upsert(p, { onConflict: 'user_id,name,variant,size_cm' });
   if (error) throw error;
 }
 
 export async function updateProduct(id: string, patch: Partial<Product>): Promise<void> {
+  if (patch.ml_listing_id) {
+    await ensureMlListing(patch.ml_listing_id);
+  }
   const { error } = await supabase.from('products').update(patch).eq('id', id);
   if (error) throw error;
 }
@@ -665,6 +671,59 @@ export async function deleteMlListing(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// === Mercado Livre (Accounts + Events) ===
+
+export type MeliAccount = {
+  id: string;
+  user_id: string;
+  ml_user_id: string | null;
+  nickname: string | null;
+  status: string | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function getMeliAccount(): Promise<MeliAccount | null> {
+  const { data, error } = await supabase.from('meli_accounts').select('*').maybeSingle();
+  if (error) throw error;
+  return (data as MeliAccount) ?? null;
+}
+
+export type InternalEvent = {
+  id: string;
+  type: string | null;
+  title: string | null;
+  body: string | null;
+  payload: any | null;
+  created_at: string;
+  read_at: string | null;
+};
+
+export async function listInternalEvents(limit = 10): Promise<InternalEvent[]> {
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data as InternalEvent[]) ?? [];
+}
+
+export async function getUnreadInternalEventsCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from('events')
+    .select('id', { count: 'exact', head: true })
+    .is('read_at', null);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function markInternalEventRead(id: string): Promise<void> {
+  const { error } = await supabase.from('events').update({ read_at: new Date().toISOString() }).eq('id', id);
+  if (error) throw error;
+}
+
 // === Clientes (v2) ===
 
 export async function listClients(type?: 'PF' | 'PJ'): Promise<Client[]> {
@@ -706,7 +765,33 @@ export async function deleteSupplier(id: string): Promise<void> {
 // === Stock Movements (Audit) ===
 
 export async function logStockMovement(m: Omit<StockMovement, 'id' | 'user_id' | 'created_at'>): Promise<void> {
-  const { error } = await supabase.from('stock_movements').insert(m);
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError) throw userError;
+  const userId = userData.user?.id;
+  if (!userId) throw new Error('Usuário não autenticado.');
+  const { error } = await supabase.from('stock_movements').insert({ ...m, user_id: userId });
   if (error) throw error;
 }
 
+async function ensureMlListing(mlListingId: string): Promise<void> {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError) throw userError;
+  const userId = userData.user?.id;
+  if (!userId) throw new Error('Usuário não autenticado.');
+
+  const { data: existing, error: selectError } = await supabase
+    .from('ml_listings')
+    .select('id')
+    .eq('ml_listing_id', mlListingId)
+    .maybeSingle();
+  if (selectError) throw selectError;
+  if (existing?.id) return;
+
+  const { error: insertError } = await supabase
+    .from('ml_listings')
+    .upsert(
+      { ml_listing_id: mlListingId, ml_item_id: mlListingId, title: mlListingId, user_id: userId },
+      { onConflict: 'ml_listing_id' }
+    );
+  if (insertError) throw insertError;
+}

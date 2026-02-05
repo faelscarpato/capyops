@@ -1,0 +1,16 @@
+# Exemplo de configuração do Wrangler (não use em produção com segredos reais)
+name = "capyops-ml"
+compatibility_date = "2026-02-05"
+
+# Variáveis públicas (build do Vite)
+[vars]
+VITE_SUPABASE_URL = "https://SEU-PROJETO.supabase.co"
+VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY = "SUPABASE_ANON_KEY"
+
+# Segredos (configure no Cloudflare Dashboard ou via `wrangler secret put`):
+# SUPABASE_URL
+# SUPABASE_SERVICE_ROLE_KEY
+# MELI_CLIENT_ID
+# MELI_CLIENT_SECRET
+# MELI_REDIRECT_URI
+# Opcional: MELI_AUTH_URL, MELI_BASE_URL
