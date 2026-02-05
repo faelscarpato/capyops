@@ -52,13 +52,34 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
       if (!resource) throw new Error('Webhook sem resource.');
 
       if (topic.includes('orders')) {
-        const order = await meliFetch(env, resource, accessToken);
+        const order = await meliFetch(env, resource, accessToken, { 'x-format-new': 'true' });
         await supabase.from('meli_orders').upsert({
           user_id: user.id,
           ml_order_id: String(order.id || mlId),
           status: order.status ?? null,
           payload: order
         }, { onConflict: 'ml_order_id' });
+        if (order.shipping?.id) {
+          const ship = await meliFetch(env, `/shipments/${order.shipping.id}`, accessToken, { 'x-format-new': 'true' });
+          await supabase.from('meli_shipments').upsert({
+            user_id: user.id,
+            ml_shipment_id: String(ship.id || order.shipping.id),
+            status: ship.status ?? null,
+            payload: ship
+          }, { onConflict: 'ml_shipment_id' });
+          const deadline =
+            ship?.shipping_option?.estimated_handling_limit?.date ??
+            ship?.estimated_handling_limit?.date ??
+            ship?.date_created ??
+            null;
+          await supabase.from('events').insert({
+            user_id: user.id,
+            type: 'ml_shipment_deadline',
+            title: 'Prazo de postagem',
+            body: deadline ? `Postar até ${new Date(deadline).toLocaleString('pt-BR')}` : 'Novo envio criado',
+            payload: ship
+          });
+        }
         await supabase.from('events').insert({
           user_id: user.id,
           type: 'ml_order',

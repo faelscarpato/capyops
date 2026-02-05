@@ -35,11 +35,11 @@ export function randomState() {
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export async function meliFetch(env: Env, path: string, accessToken: string) {
+export async function meliFetch(env: Env, path: string, accessToken: string, extraHeaders?: Record<string, string>) {
   const base = env.MELI_BASE_URL || 'https://api.mercadolibre.com';
   const url = path.startsWith('http') ? path : `${base}${path}`;
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` }
+    headers: { Authorization: `Bearer ${accessToken}`, ...(extraHeaders ?? {}) }
   });
   if (!res.ok) throw new Error(`ML API error ${res.status}`);
   return res.json();
