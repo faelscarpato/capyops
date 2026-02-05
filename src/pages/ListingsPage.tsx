@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ExternalLink, AlertCircle, Download } from 'lucide-react';
+import { ExternalLink, AlertCircle, Download, RefreshCw, Edit2 } from 'lucide-react';
 import { exportToCSV } from '../lib/utils';
 import PageHeader from '../ui/PageHeader';
 import SectionCard from '../ui/SectionCard';
 import type { MlListing } from '../lib/types';
 import { listMlListings } from '../lib/db';
+import { meliSyncItems, meliUpdateItem } from '../lib/meliApi';
 
 function daysBetween(iso: string | null) {
   if (!iso) return null;
@@ -19,6 +20,12 @@ export default function ListingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<MlListing[]>([]);
+  const [syncing, setSyncing] = useState(false);
+  const [editing, setEditing] = useState<MlListing | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editPrice, setEditPrice] = useState('');
+  const [editStock, setEditStock] = useState('');
+  const [editColor, setEditColor] = useState('');
 
   async function refresh() {
     setLoading(true);
@@ -36,6 +43,46 @@ export default function ListingsPage() {
   useEffect(() => {
     refresh();
   }, []);
+
+  async function handleSync() {
+    setSyncing(true);
+    setError(null);
+    try {
+      await meliSyncItems();
+      await refresh();
+    } catch (e: any) {
+      setError(e?.message || 'Falha ao sincronizar catálogo.');
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  function openEdit(it: MlListing) {
+    setEditing(it);
+    setEditTitle(it.title || '');
+    setEditPrice(String(it.price ?? ''));
+    setEditStock('');
+    setEditColor('');
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+    setError(null);
+    try {
+      const payload: any = {};
+      if (editTitle.trim()) payload.title = editTitle.trim();
+      if (editPrice) payload.price = Number(String(editPrice).replace(',', '.'));
+      if (editStock) payload.available_quantity = Number(String(editStock).replace(',', '.'));
+      if (editColor.trim()) {
+        payload.attributes = [{ id: 'COLOR', value_name: editColor.trim() }];
+      }
+      await meliUpdateItem({ ml_listing_id: editing.ml_listing_id, data: payload });
+      setEditing(null);
+      await refresh();
+    } catch (e: any) {
+      setError(e?.message || 'Falha ao atualizar anúncio.');
+    }
+  }
 
   const [filter, setFilter] = useState('');
 
@@ -64,6 +111,9 @@ export default function ListingsPage() {
         subtitle="Monitore a saúde e performance dos seus anúncios."
         actions={
           <div className="flex gap-2">
+            <button className="btn-ghost flex items-center gap-1" onClick={handleSync} disabled={syncing}>
+              <RefreshCw size={16} /> {syncing ? 'Sincronizando...' : 'Sync catálogo'}
+            </button>
             <button className="btn-ghost flex items-center gap-1" onClick={() => exportToCSV(items, 'anuncios.csv')}>
               <Download size={16} /> CSV
             </button>
@@ -117,7 +167,10 @@ export default function ListingsPage() {
                 <th className="p-3 text-center">Imagens</th>
                 <th className="p-3 text-center">Descrição</th>
                 <th className="p-3 text-center">Dias no ar</th>
+                <th className="p-3 text-center">Visitas</th>
+                <th className="p-3 text-center">Preço</th>
                 <th className="p-3 text-center">Status</th>
+                <th className="p-3 text-center">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -168,7 +221,18 @@ export default function ListingsPage() {
                         <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{days == null ? '—' : `${days}d`}</span>
                       </td>
                       <td className="p-3 text-center">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{it.visits ?? '—'}</span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{it.price != null ? `R$ ${Number(it.price).toFixed(2)}` : '—'}</span>
+                      </td>
+                      <td className="p-3 text-center">
                         <span className="badge badge-neutral">{it.status || 'Ativo'}</span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <button className="btn-ghost text-xs" onClick={() => openEdit(it)}>
+                          <Edit2 className="h-3 w-3" /> Editar
+                        </button>
                       </td>
                     </tr>
                   );
@@ -178,6 +242,41 @@ export default function ListingsPage() {
           </table>
         </div>
       </SectionCard>
+
+      {editing ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="card w-full max-w-lg p-5 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Editar anúncio</h3>
+              <button className="btn-ghost" type="button" onClick={() => setEditing(null)}>Fechar</button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3">
+              <label className="block text-xs">
+                Título
+                <input className="input w-full mt-1" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+              </label>
+              <label className="block text-xs">
+                Preço (R$)
+                <input className="input w-full mt-1" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} />
+              </label>
+              <label className="block text-xs">
+                Estoque (available_quantity)
+                <input className="input w-full mt-1" value={editStock} onChange={(e) => setEditStock(e.target.value)} />
+              </label>
+              <label className="block text-xs">
+                Cor (atributo)
+                <input className="input w-full mt-1" value={editColor} onChange={(e) => setEditColor(e.target.value)} placeholder="Ex: Branco" />
+              </label>
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button className="btn-ghost" type="button" onClick={() => setEditing(null)}>Cancelar</button>
+              <button className="btn-primary" type="button" onClick={saveEdit}>Salvar</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -57,3 +57,44 @@ export async function meliProcessWorker(): Promise<{ processed: number }> {
   if (!res.ok) throw new Error('Falha ao processar pendências.');
   return res.json();
 }
+
+export async function meliSyncItems(): Promise<{ synced: number }> {
+  const token = await getAccessToken();
+  const res = await fetch('/api/meli/items/sync', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Falha ao sincronizar catálogo.');
+  return res.json();
+}
+
+export async function meliUpdateItem(payload: { ml_listing_id: string; data: any }): Promise<{ ok: boolean }> {
+  const token = await getAccessToken();
+  const res = await fetch('/api/meli/items/update', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ml_listing_id: payload.ml_listing_id, payload: payload.data })
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(msg || 'Falha ao atualizar anúncio.');
+  }
+  return res.json();
+}
+
+export async function meliDownloadLabel(shipmentId: string): Promise<void> {
+  const token = await getAccessToken();
+  const res = await fetch('/api/meli/shipments/label', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ shipment_id: shipmentId })
+  });
+  if (!res.ok) throw new Error('Falha ao baixar etiqueta.');
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `etiqueta-${shipmentId}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
+}

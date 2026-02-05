@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -21,6 +21,8 @@ import {
   Link2
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
+import { listMeliShipments } from '../lib/db';
+import { meliProcessWorker } from '../lib/meliApi';
 import { useThemeMode } from './ThemeModeProvider';
 import { SidebarWidgetProvider } from './SidebarWidgetContext';
 import AlertsPopover from './AlertsPopover';
@@ -49,6 +51,7 @@ export default function AppLayout() {
   const { user, signOut } = useAuth();
   const { mode, toggleMode } = useThemeMode();
   const [sidebarContent, setSidebarContent] = useState<ReactNode | null>(null);
+  const [nextDeadline, setNextDeadline] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -77,6 +80,52 @@ export default function AppLayout() {
     await signOut();
     navigate('/login');
   }
+
+  useEffect(() => {
+    let active = true;
+
+    async function refreshDeadline() {
+      try {
+        const rows = await listMeliShipments(20);
+        const deadlines = rows
+          .map((r) => {
+            const p = r.payload || {};
+            return p?.shipping_option?.estimated_handling_limit?.date ??
+              p?.estimated_handling_limit?.date ??
+              p?.date_created ??
+              null;
+          })
+          .filter(Boolean)
+          .map((d: any) => new Date(d).getTime())
+          .sort((a, b) => a - b);
+        if (active) setNextDeadline(deadlines.length ? new Date(deadlines[0]).toISOString() : null);
+      } catch {
+        if (active) setNextDeadline(null);
+      }
+    }
+
+    refreshDeadline();
+    const t = window.setInterval(refreshDeadline, 5 * 60 * 1000);
+    return () => {
+      active = false;
+      window.clearInterval(t);
+    };
+  }, []);
+
+  useEffect(() => {
+    const enabled = window.localStorage.getItem('meli_auto_sync');
+    if (enabled === 'false') return;
+    const run = async () => {
+      try {
+        await meliProcessWorker();
+      } catch {
+        // silent
+      }
+    };
+    run();
+    const t = window.setInterval(run, 12 * 60 * 1000);
+    return () => window.clearInterval(t);
+  }, []);
 
   const drawerContent = (
     <div className="flex h-full flex-col">
@@ -233,6 +282,12 @@ export default function AppLayout() {
           <aside className="relative z-50 flex h-full w-64 max-w-[80%] flex-col overflow-y-auto border-r border-gray-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900">
             {drawerContent}
           </aside>
+        </div>
+      ) : null}
+
+      {nextDeadline ? (
+        <div className="fixed bottom-4 right-4 z-50 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800 shadow-lg dark:border-amber-900/60 dark:bg-amber-900/30 dark:text-amber-100">
+          Postar até: {new Date(nextDeadline).toLocaleString('pt-BR')}
         </div>
       ) : null}
     </div>

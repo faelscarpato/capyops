@@ -724,6 +724,25 @@ export async function markInternalEventRead(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export type MeliShipment = {
+  id: string;
+  ml_shipment_id: string;
+  status: string | null;
+  payload: any | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function listMeliShipments(limit = 10): Promise<MeliShipment[]> {
+  const { data, error } = await supabase
+    .from('meli_shipments')
+    .select('*')
+    .order('updated_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data as MeliShipment[]) ?? [];
+}
+
 // === Clientes (v2) ===
 
 export async function listClients(type?: 'PF' | 'PJ'): Promise<Client[]> {

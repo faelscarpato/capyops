@@ -106,11 +106,16 @@ export type MlListing = {
   ml_listing_id: string;
   title: string;
   url: string | null;
+  price?: number | null;
+  sold_quantity?: number | null;
+  visits?: number | null;
   images_count: number | null;
   description_chars: number | null;
   has_full_description: boolean | null;
   listed_at: string | null;
   status?: string | null;
+  payload?: any | null;
+  last_sync_at?: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -228,4 +233,3 @@ export type StockMovement = {
   notes?: string | null;
   created_at?: string;
 };
-
