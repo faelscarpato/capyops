@@ -1,4 +1,4 @@
-import { Env, getSupabaseAdmin, meliFetch, refreshToken, requireUser } from '../_shared';
+import { Env, getSupabaseAdmin, meliFetch, refreshToken, requireUser, resolveOwnerId } from '../_shared';
 
 async function getAccountAndToken(env: Env, userId: string, supabase: any) {
   const { data: account, error } = await supabase.from('meli_accounts').select('*').eq('user_id', userId).maybeSingle();
@@ -25,8 +25,9 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
   const { request, env } = ctx;
   const user = await requireUser(request, env);
   const supabase = getSupabaseAdmin(env);
+  const ownerId = await resolveOwnerId(supabase, user.id);
 
-  const { account, accessToken } = await getAccountAndToken(env, user.id, supabase);
+  const { account, accessToken } = await getAccountAndToken(env, ownerId, supabase);
 
   const search = await meliFetch(env, `/users/${account.ml_user_id}/items/search`, accessToken);
   const ids: string[] = (search?.results || []) as string[];
@@ -71,7 +72,7 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
         listed_at: body.date_created ?? null,
         payload: body,
         last_sync_at: new Date().toISOString(),
-        user_id: user.id
+        user_id: ownerId
       }, { onConflict: 'ml_listing_id' });
       synced += 1;
     }

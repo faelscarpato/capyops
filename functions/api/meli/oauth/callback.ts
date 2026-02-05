@@ -1,9 +1,10 @@
-import { Env, getSupabaseAdmin, requireUser } from '../_shared';
+import { Env, getSupabaseAdmin, requireUser, resolveOwnerId } from '../_shared';
 
 export const onRequestPost: PagesFunction<Env> = async (ctx) => {
   const { request, env } = ctx;
   const user = await requireUser(request, env);
   const supabase = getSupabaseAdmin(env);
+  const ownerId = await resolveOwnerId(supabase, user.id);
 
   const body = await request.json().catch(() => ({}));
   const code = String(body.code || '');
@@ -16,7 +17,7 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
     .eq('state', state)
     .maybeSingle();
   if (stateError) throw stateError;
-  if (!stateRow || stateRow.user_id !== user.id || stateRow.used_at) {
+  if (!stateRow || stateRow.user_id !== ownerId || stateRow.used_at) {
     return new Response('Invalid state', { status: 400 });
   }
 
@@ -57,7 +58,7 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
 
   const { error: upsertError } = await supabase.from('meli_accounts').upsert(
     {
-      user_id: user.id,
+      user_id: ownerId,
       ml_user_id: String(token.user_id ?? ''),
       nickname,
       access_token: token.access_token,

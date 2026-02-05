@@ -1,4 +1,4 @@
-import { Env, getSupabaseAdmin, refreshToken, requireUser } from '../_shared';
+import { Env, getSupabaseAdmin, refreshToken, requireUser, resolveOwnerId } from '../_shared';
 
 async function getAccountAndToken(env: Env, userId: string, supabase: any) {
   const { data: account, error } = await supabase.from('meli_accounts').select('*').eq('user_id', userId).maybeSingle();
@@ -25,13 +25,14 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
   const { request, env } = ctx;
   const user = await requireUser(request, env);
   const supabase = getSupabaseAdmin(env);
+  const ownerId = await resolveOwnerId(supabase, user.id);
 
   const body = await request.json().catch(() => ({}));
   const listingId = String(body.ml_listing_id || '');
   const payload = body.payload || {};
   if (!listingId) return new Response('ml_listing_id required', { status: 400 });
 
-  const { accessToken } = await getAccountAndToken(env, user.id, supabase);
+  const { accessToken } = await getAccountAndToken(env, ownerId, supabase);
 
   const res = await fetch(`https://api.mercadolibre.com/items/${listingId}`, {
     method: 'PUT',

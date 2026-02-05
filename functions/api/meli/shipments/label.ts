@@ -1,4 +1,4 @@
-import { Env, getSupabaseAdmin, refreshToken, requireUser } from '../_shared';
+import { Env, getSupabaseAdmin, refreshToken, requireUser, resolveOwnerId } from '../_shared';
 
 async function getAccountAndToken(env: Env, userId: string, supabase: any) {
   const { data: account, error } = await supabase.from('meli_accounts').select('*').eq('user_id', userId).maybeSingle();
@@ -25,12 +25,13 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
   const { request, env } = ctx;
   const user = await requireUser(request, env);
   const supabase = getSupabaseAdmin(env);
+  const ownerId = await resolveOwnerId(supabase, user.id);
 
   const body = await request.json().catch(() => ({}));
   const shipmentId = String(body.shipment_id || '');
   if (!shipmentId) return new Response('shipment_id required', { status: 400 });
 
-  const { accessToken } = await getAccountAndToken(env, user.id, supabase);
+  const { accessToken } = await getAccountAndToken(env, ownerId, supabase);
 
   const res = await fetch(`https://api.mercadolibre.com/shipment_labels?shipment_ids=${shipmentId}&response_type=pdf`, {
     headers: { Authorization: `Bearer ${accessToken}` }

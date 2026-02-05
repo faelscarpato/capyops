@@ -29,6 +29,16 @@ export async function requireUser(req: Request, env: Env) {
   return data.user;
 }
 
+export async function resolveOwnerId(supabase: any, userId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from('workspace_members')
+    .select('owner_id')
+    .eq('member_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.owner_id ?? userId;
+}
+
 export function randomState() {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);

@@ -1,4 +1,4 @@
-import { Env, getSupabaseAdmin, randomState, requireUser } from '../_shared';
+import { Env, getSupabaseAdmin, randomState, requireUser, resolveOwnerId } from '../_shared';
 
 function base64UrlEncode(buffer: ArrayBuffer) {
   const bytes = new Uint8Array(buffer);
@@ -25,12 +25,13 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
   const { request, env } = ctx;
   const user = await requireUser(request, env);
   const supabase = getSupabaseAdmin(env);
+  const ownerId = await resolveOwnerId(supabase, user.id);
 
   const state = randomState();
   const { verifier, challenge } = await createPkce();
 
   const { error } = await supabase.from('meli_oauth_states').insert({
-    user_id: user.id,
+    user_id: ownerId,
     state,
     code_verifier: verifier,
     code_challenge: challenge,
