@@ -12,7 +12,7 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
 
   const { data: stateRow, error: stateError } = await supabase
     .from('meli_oauth_states')
-    .select('id,user_id,used_at')
+    .select('id,user_id,used_at,code_verifier')
     .eq('state', state)
     .maybeSingle();
   if (stateError) throw stateError;
@@ -26,6 +26,9 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
   params.set('client_secret', env.MELI_CLIENT_SECRET);
   params.set('code', code);
   params.set('redirect_uri', env.MELI_REDIRECT_URI);
+  if (stateRow?.code_verifier) {
+    params.set('code_verifier', stateRow.code_verifier);
+  }
 
   const tokenRes = await fetch('https://api.mercadolibre.com/oauth/token', {
     method: 'POST',
