@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getWorkspaceOwnerId } from './workspaceApi';
 import type {
   Product,
   Sale,
@@ -17,6 +18,16 @@ import type {
   Supplier,
   StockMovement
 } from './types';
+
+async function resolveOwnerId(): Promise<string> {
+  const ownerId = getWorkspaceOwnerId();
+  if (ownerId) return ownerId;
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  const userId = data.user?.id;
+  if (!userId) throw new Error('Usuário não autenticado.');
+  return userId;
+}
 
 // === Produtos ===
 
@@ -40,7 +51,11 @@ export async function upsertProduct(p: Partial<Product> & { name: string; varian
   if (p.ml_listing_id) {
     await ensureMlListing(p.ml_listing_id);
   }
-  const { error } = await supabase.from('products').upsert(p, { onConflict: 'user_id,name,variant,size_cm' });
+  const ownerId = await resolveOwnerId();
+  const { error } = await supabase.from('products').upsert(
+    { ...p, user_id: ownerId },
+    { onConflict: 'user_id,name,variant,size_cm' }
+  );
   if (error) throw error;
 }
 
@@ -70,24 +85,52 @@ export async function applySale(args: {
   notes?: string | null;
   sold_at?: string;
 }): Promise<string> {
-  const { data, error } = await supabase.rpc('apply_sale', {
-    p_product_id: args.product_id,
-    p_quantity: args.quantity,
-    p_channel: args.channel,
-    p_sale_price: args.sale_price,
-    p_shipping_cost: args.shipping_cost ?? 0,
-    p_ml_fee_rate: args.ml_fee_rate ?? null,
-    p_packaging_cost: args.packaging_cost ?? null,
-    p_extra_cost: args.extra_cost ?? 0,
-    p_notes: args.notes ?? null,
-    p_sold_at: args.sold_at ?? new Date().toISOString()
-  });
+  const ownerId = await resolveOwnerId();
+  const { data: product, error: productError } = await supabase
+    .from('products')
+    .select('stock')
+    .eq('id', args.product_id)
+    .single();
+  if (productError) throw productError;
+  const prevStock = Number(product?.stock ?? 0);
+  const newStock = prevStock - Number(args.quantity ?? 0);
+
+  const { data: sale, error } = await supabase
+    .from('sales')
+    .insert({
+      user_id: ownerId,
+      product_id: args.product_id,
+      quantity: args.quantity,
+      channel: args.channel,
+      region: args.region ?? null,
+      sale_price: args.sale_price,
+      shipping_cost: args.shipping_cost ?? 0,
+      ml_fee_rate: args.ml_fee_rate ?? null,
+      packaging_cost: args.packaging_cost ?? null,
+      extra_cost: args.extra_cost ?? 0,
+      notes: args.notes ?? null,
+      sold_at: args.sold_at ?? new Date().toISOString(),
+      status: 'completed'
+    })
+    .select('id')
+    .single();
   if (error) throw error;
-  const saleId = data as string;
-  if (args.region) {
-    const { error: updateError } = await supabase.from('sales').update({ region: args.region }).eq('id', saleId);
-    if (updateError) throw updateError;
-  }
+  const saleId = sale?.id as string;
+
+  const { error: updateError } = await supabase.from('products').update({ stock: newStock }).eq('id', args.product_id);
+  if (updateError) throw updateError;
+
+  await supabase.from('stock_movements').insert({
+    user_id: ownerId,
+    product_id: args.product_id,
+    type: 'SALE',
+    quantity: args.quantity,
+    previous_stock: prevStock,
+    new_stock: newStock,
+    reference_id: saleId,
+    notes: args.notes ?? null
+  });
+
   return saleId;
 }
 
@@ -271,7 +314,11 @@ export async function listSupplies(): Promise<Supply[]> {
 }
 
 export async function upsertSupply(p: Partial<Supply> & { name: string; category: string; unit: string }): Promise<void> {
-  const { error } = await supabase.from('supplies').upsert(p, { onConflict: 'user_id,name' });
+  const ownerId = await resolveOwnerId();
+  const { error } = await supabase.from('supplies').upsert(
+    { ...p, user_id: ownerId },
+    { onConflict: 'user_id,name' }
+  );
   if (error) throw error;
 }
 
@@ -307,7 +354,9 @@ export async function addExpense(e: {
   notes?: string | null;
   paid_at?: string;
 }): Promise<void> {
+  const ownerId = await resolveOwnerId();
   const { error } = await supabase.from('expenses').insert({
+    user_id: ownerId,
     category: e.category,
     amount: e.amount,
     payment_method: e.payment_method ?? null,
@@ -331,7 +380,11 @@ export async function listPackingKits(): Promise<PackingKit[]> {
 }
 
 export async function upsertPackingKit(p: Partial<PackingKit> & { name: string }): Promise<void> {
-  const { error } = await supabase.from('packing_kits').upsert(p, { onConflict: 'user_id,name' });
+  const ownerId = await resolveOwnerId();
+  const { error } = await supabase.from('packing_kits').upsert(
+    { ...p, user_id: (p as any).user_id ?? ownerId },
+    { onConflict: 'user_id,name' }
+  );
   if (error) throw error;
 }
 
@@ -356,7 +409,11 @@ export async function listAllPackingKitItems(): Promise<PackingKitItem[]> {
 }
 
 export async function upsertPackingKitItem(p: Partial<PackingKitItem> & { kit_id: string; supply_id: string; qty_per_order: number }): Promise<void> {
-  const { error } = await supabase.from('packing_kit_items').upsert(p, { onConflict: 'kit_id,supply_id' });
+  const ownerId = await resolveOwnerId();
+  const { error } = await supabase.from('packing_kit_items').upsert(
+    { ...p, user_id: (p as any).user_id ?? ownerId },
+    { onConflict: 'kit_id,supply_id' }
+  );
   if (error) throw error;
 }
 
@@ -399,9 +456,11 @@ export async function createPurchaseQuote(p: {
   status?: string;
   notes?: string | null;
 }): Promise<PurchaseQuote> {
+  const ownerId = await resolveOwnerId();
   const { data, error } = await supabase
     .from('purchase_quotes')
     .insert({
+      user_id: ownerId,
       supplier_name: p.supplier_name,
       title: p.title ?? null,
       status: p.status ?? 'draft',
@@ -442,7 +501,9 @@ export async function addPurchaseQuoteItem(p: {
   qty: number;
   unit_cost: number;
 }): Promise<void> {
+  const ownerId = await resolveOwnerId();
   const { error } = await supabase.from('purchase_quote_items').insert({
+    user_id: ownerId,
     quote_id: p.quote_id,
     supply_id: p.supply_id ?? null,
     product_id: p.product_id ?? null,
@@ -589,8 +650,10 @@ export async function upsertCompetitorTracking(payload: {
   competitor_mlb_id: string;
   target_price?: number | null;
 }): Promise<void> {
+  const ownerId = await resolveOwnerId();
   const { error } = await supabase.from('competitor_tracking').upsert(
     {
+      user_id: ownerId,
       my_product_id: payload.my_product_id,
       competitor_mlb_id: payload.competitor_mlb_id,
       target_price: payload.target_price ?? null
@@ -733,6 +796,25 @@ export type MeliShipment = {
   updated_at: string;
 };
 
+export type MeliOrder = {
+  id: string;
+  ml_order_id: string;
+  status: string | null;
+  payload: any | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function listMeliOrders(limit = 50): Promise<MeliOrder[]> {
+  const { data, error } = await supabase
+    .from('meli_orders')
+    .select('*')
+    .order('updated_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data as MeliOrder[]) ?? [];
+}
+
 export async function listMeliShipments(limit = 10): Promise<MeliShipment[]> {
   const { data, error } = await supabase
     .from('meli_shipments')
@@ -741,6 +823,63 @@ export async function listMeliShipments(limit = 10): Promise<MeliShipment[]> {
     .limit(limit);
   if (error) throw error;
   return (data as MeliShipment[]) ?? [];
+}
+
+export type MeliHealthSignals = {
+  orders_at: string | null;
+  items_at: string | null;
+  questions_at: string | null;
+  messages_at: string | null;
+  shipments_at: string | null;
+  feedback_at: string | null;
+};
+
+async function latestTimestamp(table: string, column: string) {
+  const { data, error } = await supabase
+    .from(table)
+    .select(column)
+    .order(column, { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as any)?.[column] ?? null;
+}
+
+export async function getMeliHealthSignals(): Promise<MeliHealthSignals> {
+  const [orders_at, messages_at, shipments_at, feedback_at, questions_at, items_sync] = await Promise.all([
+    latestTimestamp('meli_orders', 'updated_at'),
+    latestTimestamp('meli_messages', 'updated_at'),
+    latestTimestamp('meli_shipments', 'updated_at'),
+    latestTimestamp('meli_feedback', 'updated_at'),
+    latestTimestamp('ml_questions', 'received_at'),
+    latestTimestamp('ml_listings', 'last_sync_at')
+  ]);
+
+  return {
+    orders_at,
+    items_at: items_sync,
+    questions_at,
+    messages_at,
+    shipments_at,
+    feedback_at
+  };
+}
+
+export type WorkspaceMember = {
+  id: string;
+  owner_id: string;
+  member_id: string;
+  role: string | null;
+  created_at: string;
+};
+
+export async function listWorkspaceMembers(): Promise<WorkspaceMember[]> {
+  const { data, error } = await supabase
+    .from('workspace_members')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data as WorkspaceMember[]) ?? [];
 }
 
 // === Clientes (v2) ===
@@ -754,7 +893,8 @@ export async function listClients(type?: 'PF' | 'PJ'): Promise<Client[]> {
 }
 
 export async function upsertClient(p: Partial<Client> & { name: string; type: 'PF' | 'PJ' }): Promise<void> {
-  const { error } = await supabase.from('clients').upsert(p);
+  const ownerId = await resolveOwnerId();
+  const { error } = await supabase.from('clients').upsert({ ...p, user_id: ownerId });
   if (error) throw error;
 }
 
@@ -772,7 +912,8 @@ export async function listSuppliers(): Promise<Supplier[]> {
 }
 
 export async function upsertSupplier(p: Partial<Supplier> & { name: string }): Promise<void> {
-  const { error } = await supabase.from('suppliers').upsert(p);
+  const ownerId = await resolveOwnerId();
+  const { error } = await supabase.from('suppliers').upsert({ ...p, user_id: ownerId });
   if (error) throw error;
 }
 
@@ -784,19 +925,13 @@ export async function deleteSupplier(id: string): Promise<void> {
 // === Stock Movements (Audit) ===
 
 export async function logStockMovement(m: Omit<StockMovement, 'id' | 'user_id' | 'created_at'>): Promise<void> {
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError) throw userError;
-  const userId = userData.user?.id;
-  if (!userId) throw new Error('Usuário não autenticado.');
-  const { error } = await supabase.from('stock_movements').insert({ ...m, user_id: userId });
+  const ownerId = await resolveOwnerId();
+  const { error } = await supabase.from('stock_movements').insert({ ...m, user_id: ownerId });
   if (error) throw error;
 }
 
 async function ensureMlListing(mlListingId: string): Promise<void> {
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError) throw userError;
-  const userId = userData.user?.id;
-  if (!userId) throw new Error('Usuário não autenticado.');
+  const ownerId = await resolveOwnerId();
 
   const { data: existing, error: selectError } = await supabase
     .from('ml_listings')
@@ -807,9 +942,9 @@ async function ensureMlListing(mlListingId: string): Promise<void> {
   if (existing?.id) return;
 
   const { error: insertError } = await supabase
-    .from('ml_listings')
-    .upsert(
-      { ml_listing_id: mlListingId, ml_item_id: mlListingId, title: mlListingId, user_id: userId },
+      .from('ml_listings')
+      .upsert(
+      { ml_listing_id: mlListingId, ml_item_id: mlListingId, title: mlListingId, user_id: ownerId },
       { onConflict: 'ml_listing_id' }
     );
   if (insertError) throw insertError;

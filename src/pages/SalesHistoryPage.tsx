@@ -1,68 +1,46 @@
 import { useEffect, useMemo, useState } from 'react';
 import PageHeader from '../ui/PageHeader';
 import SectionCard from '../ui/SectionCard';
-import { addExpense, createSaleException, getSalesHistory, type SalesHistoryRow } from '../lib/db';
-import type { SaleException, SaleStatus } from '../lib/types';
-
-type ExceptionType = SaleException['type'];
+import { listMeliOrders, listMeliShipments, type MeliOrder } from '../lib/db';
 
 function fmtBRL(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-function formatDate(value: string) {
+function formatDate(value: string | null | undefined) {
+  if (!value) return '—';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString('pt-BR');
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString('pt-BR');
 }
 
-function statusLabel(status: SaleStatus) {
-  const map: Record<SaleStatus, string> = {
-    completed: 'Concluida',
-    cancelled: 'Cancelada',
-    returned: 'Devolvida',
-    exchanged: 'Trocada'
-  };
-  return map[status];
-}
-
-function StatusChip({ status }: { status: SaleStatus }) {
-  const styles: Record<SaleStatus, string> = {
-    completed: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-900/30 dark:text-emerald-200',
-    cancelled: 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-900/30 dark:text-red-200',
-    returned: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-900/30 dark:text-amber-200',
-    exchanged: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/60 dark:bg-blue-900/30 dark:text-blue-200'
-  };
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${styles[status]}`}>
-      {statusLabel(status)}
-    </span>
-  );
+function isPaidOrder(order: any): boolean {
+  if (!order) return false;
+  if (order.status === 'paid') return true;
+  if (Array.isArray(order.payments)) {
+    return order.payments.some((p: any) => p?.status === 'approved' || p?.status === 'paid');
+  }
+  return false;
 }
 
 export default function SalesHistoryPage() {
-  const [rows, setRows] = useState<SalesHistoryRow[]>([]);
+  const [rows, setRows] = useState<MeliOrder[]>([]);
+  const [shipments, setShipments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [selectedSale, setSelectedSale] = useState<SalesHistoryRow | null>(null);
-  const [exceptionType, setExceptionType] = useState<ExceptionType>('return');
-  const [reason, setReason] = useState('');
-  const [restock, setRestock] = useState(true);
   const [searchText, setSearchText] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | SaleStatus>('all');
-  const [hasLoss, setHasLoss] = useState(false);
-  const [lossAmount, setLossAmount] = useState('');
-  const [lossNotes, setLossNotes] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'paid'>('paid');
 
   async function refresh() {
     setLoading(true);
     setErr(null);
     try {
-      const data = await getSalesHistory();
+      const data = await listMeliOrders(80);
+      const sh = await listMeliShipments(80);
       setRows(data);
+      setShipments(sh);
     } catch (e: any) {
-      setErr(e?.message ?? 'Erro ao carregar historico de vendas.');
+      setErr(e?.message ?? 'Erro ao carregar vendas do ML.');
     } finally {
       setLoading(false);
     }
@@ -72,80 +50,50 @@ export default function SalesHistoryPage() {
     refresh();
   }, []);
 
-  const normalizedRows = useMemo(() => {
-    return rows.map((row) => ({
-      ...row,
-      status: (row.status ?? 'completed') as SaleStatus
-    }));
-  }, [rows]);
+  const shipmentDeadlineById = useMemo(() => {
+    const map = new Map<string, string | null>();
+    shipments.forEach((s) => {
+      const p = s.payload || {};
+      const deadline =
+        p?.shipping_option?.estimated_handling_limit?.date ??
+        p?.estimated_handling_limit?.date ??
+        p?.date_created ??
+        null;
+      map.set(String(s.ml_shipment_id), deadline);
+    });
+    return map;
+  }, [shipments]);
 
-  const filteredRows = useMemo(() => {
+  const filtered = useMemo(() => {
     const query = searchText.trim().toLowerCase();
-    return normalizedRows.filter((row) => {
-      if (statusFilter !== 'all' && row.status !== statusFilter) return false;
+    return rows.filter((row) => {
+      const order = row.payload || {};
+      if (statusFilter === 'paid' && !isPaidOrder(order)) return false;
       if (!query) return true;
+      const buyer = order?.buyer || {};
       const haystack = [
-        row.product?.name,
-        row.product?.variant,
-        row.channel,
-        row.notes,
-        row.id
+        row.ml_order_id,
+        order?.status,
+        buyer?.nickname,
+        buyer?.first_name,
+        buyer?.last_name
       ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
       return haystack.includes(query);
     });
-  }, [normalizedRows, searchText, statusFilter]);
+  }, [rows, searchText, statusFilter]);
 
-  async function onConfirmException() {
-    if (!selectedSale) return;
-    if (hasLoss && Number(lossAmount || 0) <= 0) {
-      setErr('Informe o valor do prejuizo.');
-      return;
-    }
-    setSaving(true);
-    try {
-      await createSaleException(selectedSale.id, selectedSale.product_id, selectedSale.quantity, {
-        type: exceptionType,
-        reason: reason.trim() ? reason.trim() : null,
-        restock_inventory: restock
-      });
-      if (hasLoss && Number(lossAmount || 0) > 0) {
-        const notes = [
-          `Venda ${selectedSale.id}`,
-          `Tipo: ${exceptionType}`,
-          `Produto: ${selectedSale.product?.name ?? 'Produto'}`,
-          lossNotes.trim() ? `Obs: ${lossNotes.trim()}` : null,
-          reason.trim() ? `Motivo: ${reason.trim()}` : null
-        ]
-          .filter(Boolean)
-          .join(' • ');
-        await addExpense({
-          category: 'Prejuizo devolucao',
-          amount: Number(lossAmount || 0),
-          notes
-        });
-      }
-      setSelectedSale(null);
-      setReason('');
-      setRestock(true);
-      setHasLoss(false);
-      setLossAmount('');
-      setLossNotes('');
-      await refresh();
-    } catch (e: any) {
-      setErr(e?.message ?? 'Erro ao registrar excecao.');
-    } finally {
-      setSaving(false);
-    }
-  }
+  const paidOrders = useMemo(() => {
+    return rows.filter((r) => isPaidOrder(r.payload));
+  }, [rows]);
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Historico de vendas"
-        subtitle="Controle de devolucoes, cancelamentos e trocas."
+        title="Histórico de vendas (Mercado Livre)"
+        subtitle="Vendas automáticas + status de pagamento e prazo de postagem."
         actions={
           <button className="btn-ghost" type="button" onClick={refresh} disabled={loading}>
             {loading ? 'Atualizando...' : 'Atualizar'}
@@ -153,98 +101,40 @@ export default function SalesHistoryPage() {
         }
       />
 
-      {err ? (
-        <div className="alert alert-error">
-          {err}
-        </div>
-      ) : null}
+      {err ? <div className="alert alert-error">{err}</div> : null}
 
-      <SectionCard title="Filtros e busca">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <div className="label mb-1">Busca</div>
-            <input
-              className="input"
-              placeholder="Produto, variante, canal ou ID da venda"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-            />
-          </div>
-          <div>
-            <div className="label mb-1">Status</div>
-            <select className="input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)}>
-              <option value="all">Todos</option>
-              <option value="completed">Concluida</option>
-              <option value="cancelled">Cancelada</option>
-              <option value="returned">Devolvida</option>
-              <option value="exchanged">Trocada</option>
-            </select>
-          </div>
-        </div>
-      </SectionCard>
-
-      <SectionCard title="Vendas registradas">
+      <SectionCard title="Pagamento aprovado">
         <div className="table-scroll">
-          <table className="table-base w-full text-left">
+          <table className="table-base w-full text-left text-xs">
             <thead>
               <tr>
-                <th className="hidden sm:table-cell">Data</th>
-                <th>Produto</th>
-                <th className="text-right">Valor</th>
-                <th className="hidden md:table-cell">Canal</th>
-                <th className="text-center">Status</th>
-                <th className="hidden lg:table-cell text-right">Acoes</th>
+                <th>Pedido</th>
+                <th>Cliente</th>
+                <th>Valor</th>
+                <th>Status</th>
+                <th>Prazo postagem</th>
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map((row) => {
-                const canHandle = row.status === 'completed';
-                const totalValue = Number(row.sale_price ?? 0) * Number(row.quantity ?? 0);
+              {paidOrders.map((row) => {
+                const order = row.payload || {};
+                const buyer = order?.buyer || {};
+                const total = Number(order?.total_amount ?? 0);
+                const shipId = order?.shipping?.id ? String(order.shipping.id) : null;
+                const deadline = shipId ? shipmentDeadlineById.get(shipId) ?? null : null;
                 return (
                   <tr key={row.id}>
-                    <td className="hidden sm:table-cell">{formatDate(row.sold_at)}</td>
-                    <td>
-                      <div className="flex flex-col">
-                        <div className="font-medium">{row.product?.name ?? 'Produto'}</div>
-                        <div className="text-xs text-gray-500 dark:text-slate-400">
-                          {row.product?.variant ?? '-'} • <span className="sm:hidden">{formatDate(row.sold_at)}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="text-right">{fmtBRL(totalValue)}</td>
-                    <td className="hidden md:table-cell">{row.channel}</td>
-                    <td className="text-center">
-                      <StatusChip status={row.status} />
-                    </td>
-                    <td className="hidden lg:table-cell text-right">
-                      {canHandle ? (
-                        <button
-                          className="btn-ghost text-xs"
-                          type="button"
-                          onClick={() => {
-                            setSelectedSale(row);
-                            setExceptionType('return');
-                            setReason('');
-                            setRestock(true);
-                            setHasLoss(false);
-                            setLossAmount('');
-                            setLossNotes('');
-                          }}
-                        >
-                          Devolver
-                        </button>
-                      ) : (
-                        <span className="text-xs text-gray-400 dark:text-slate-500">-</span>
-                      )}
-                    </td>
+                    <td className="font-medium">{row.ml_order_id}</td>
+                    <td>{buyer.nickname || [buyer.first_name, buyer.last_name].filter(Boolean).join(' ') || '—'}</td>
+                    <td>{fmtBRL(total)}</td>
+                    <td>Pagamento aprovado</td>
+                    <td className="font-semibold text-amber-700 dark:text-amber-200">{formatDate(deadline)}</td>
                   </tr>
                 );
               })}
-              {!filteredRows.length ? (
+              {!paidOrders.length ? (
                 <tr>
-                  <td colSpan={6} className="px-2 py-6 text-center text-sm text-gray-500 dark:text-slate-400">
-                    Nenhuma venda encontrada.
-                  </td>
+                  <td colSpan={5} className="py-4 text-center text-gray-500">Nenhum pedido aprovado.</td>
                 </tr>
               ) : null}
             </tbody>
@@ -252,92 +142,77 @@ export default function SalesHistoryPage() {
         </div>
       </SectionCard>
 
-      {selectedSale ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="card w-full max-w-lg p-5 shadow-xl">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Registrar excecao</h3>
-              <button className="btn-ghost" type="button" onClick={() => setSelectedSale(null)} disabled={saving}>
-                Fechar
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-4">
-              <div>
-                <div className="label mb-1">Tipo</div>
-                <select
-                  className="input"
-                  value={exceptionType}
-                  onChange={(e) => setExceptionType(e.target.value as ExceptionType)}
-                >
-                  <option value="return">Devolucao</option>
-                  <option value="cancellation">Cancelamento</option>
-                  <option value="exchange">Troca</option>
-                </select>
-              </div>
-
-              <div>
-                <div className="label mb-1">Motivo</div>
-                <textarea
-                  className="input min-h-[96px]"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="Descreva o motivo da excecao"
-                />
-              </div>
-
-              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
-                <input type="checkbox" checked={restock} onChange={(e) => setRestock(e.target.checked)} />
-                Devolver ao estoque?
-              </label>
-
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
-                  <input type="checkbox" checked={hasLoss} onChange={(e) => setHasLoss(e.target.checked)} />
-                  Houve prejuizo financeiro?
-                </label>
-                {hasLoss ? (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
-                      <div className="label mb-1">Valor do prejuizo</div>
-                      <input
-                        className="input"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={lossAmount}
-                        onChange={(e) => setLossAmount(e.target.value)}
-                        placeholder="0,00"
-                      />
-                    </div>
-                    <div>
-                      <div className="label mb-1">Observacoes</div>
-                      <input
-                        className="input"
-                        value={lossNotes}
-                        onChange={(e) => setLossNotes(e.target.value)}
-                        placeholder="Frete reverso, embalagem, etc."
-                      />
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="mt-6 flex items-center justify-end gap-2">
-              <button className="btn-ghost" type="button" onClick={() => setSelectedSale(null)} disabled={saving}>
-                Cancelar
-              </button>
-              <button className="btn-primary" type="button" onClick={onConfirmException} disabled={saving}>
-                {saving ? 'Salvando...' : 'Confirmar'}
-              </button>
-            </div>
+      <SectionCard title="Filtro e histórico geral">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <div className="label mb-1">Busca</div>
+            <input
+              className="input"
+              placeholder="Pedido, cliente, status"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+            />
+          </div>
+          <div>
+            <div className="label mb-1">Status</div>
+            <select className="input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)}>
+              <option value="paid">Pagamento aprovado</option>
+              <option value="all">Todos</option>
+            </select>
           </div>
         </div>
-      ) : null}
+      </SectionCard>
+
+      <SectionCard title="Pedidos Mercado Livre">
+        <div className="table-scroll">
+          <table className="table-base w-full text-left text-xs">
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>Cliente</th>
+                <th>Status</th>
+                <th>Itens</th>
+                <th className="text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((row) => {
+                const order = row.payload || {};
+                const buyer = order?.buyer || {};
+                const items = Array.isArray(order.order_items) ? order.order_items : [];
+                return (
+                  <tr key={row.id}>
+                    <td>
+                      <div className="font-medium">{row.ml_order_id}</div>
+                      <div className="text-[11px] text-gray-500">{formatDate(order.date_created)}</div>
+                    </td>
+                    <td>{buyer.nickname || [buyer.first_name, buyer.last_name].filter(Boolean).join(' ') || '—'}</td>
+                    <td>{order.status || '—'}</td>
+                    <td>
+                      <div className="space-y-1">
+                        {items.slice(0, 3).map((it: any, idx: number) => (
+                          <div key={idx} className="text-[11px] text-gray-600 dark:text-slate-300">
+                            {it?.item?.title || it?.item_id || 'Item'} • x{it?.quantity ?? 1}
+                          </div>
+                        ))}
+                        {items.length > 3 ? (
+                          <div className="text-[11px] text-gray-400">+{items.length - 3} itens</div>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="text-right">{fmtBRL(Number(order?.total_amount ?? 0))}</td>
+                  </tr>
+                );
+              })}
+              {!filtered.length ? (
+                <tr>
+                  <td colSpan={5} className="py-4 text-center text-gray-500">Nenhum pedido encontrado.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
     </div>
   );
 }
-
-
-

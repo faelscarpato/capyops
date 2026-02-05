@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ExternalLink, AlertCircle, Download, RefreshCw, Edit2 } from 'lucide-react';
+import { ExternalLink, AlertCircle, Download, RefreshCw, Edit2, MessageCircle } from 'lucide-react';
 import { exportToCSV } from '../lib/utils';
 import PageHeader from '../ui/PageHeader';
 import SectionCard from '../ui/SectionCard';
 import type { MlListing } from '../lib/types';
-import { listMlListings } from '../lib/db';
+import { getPendingMlQuestionsCount, listMlListings } from '../lib/db';
 import { meliSyncItems, meliUpdateItem } from '../lib/meliApi';
 
 function daysBetween(iso: string | null) {
@@ -22,6 +22,7 @@ export default function ListingsPage() {
   const [items, setItems] = useState<MlListing[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [editing, setEditing] = useState<MlListing | null>(null);
+  const [pendingQuestions, setPendingQuestions] = useState(0);
   const [editTitle, setEditTitle] = useState('');
   const [editPrice, setEditPrice] = useState('');
   const [editStock, setEditStock] = useState('');
@@ -33,6 +34,8 @@ export default function ListingsPage() {
     try {
       const rows = await listMlListings();
       setItems(rows);
+      const q = await getPendingMlQuestionsCount();
+      setPendingQuestions(q);
     } catch (e: any) {
       setError(e?.message || 'Falha ao carregar anúncios.');
     } finally {
@@ -141,6 +144,13 @@ export default function ListingsPage() {
           <div className="text-3xl font-semibold">{loading ? '—' : stats.lowImgs}</div>
           <div className="text-xs text-gray-500 dark:text-slate-400">Abaixo de 6 fotos</div>
         </SectionCard>
+        <SectionCard title="Perguntas pendentes" className="md:col-span-1 border-l-4 border-l-amber-400">
+          <div className="flex items-center gap-2">
+            <MessageCircle className="h-4 w-4 text-amber-600" />
+            <div className="text-3xl font-semibold">{loading ? '—' : pendingQuestions}</div>
+          </div>
+          <div className="text-xs text-gray-500 dark:text-slate-400">Responder no ML para liberar</div>
+        </SectionCard>
       </div>
 
       {error && (
@@ -169,6 +179,9 @@ export default function ListingsPage() {
                 <th className="p-3 text-center">Dias no ar</th>
                 <th className="p-3 text-center">Visitas</th>
                 <th className="p-3 text-center">Preço</th>
+                <th className="p-3 text-center">Tipo</th>
+                <th className="p-3 text-center">Vendas</th>
+                <th className="p-3 text-center">Conversão</th>
                 <th className="p-3 text-center">Status</th>
                 <th className="p-3 text-center">Ações</th>
               </tr>
@@ -176,13 +189,13 @@ export default function ListingsPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-sm text-gray-500 dark:text-slate-400">
+                  <td colSpan={11} className="py-8 text-center text-sm text-gray-500 dark:text-slate-400">
                     Carregando análise...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-sm text-gray-500 dark:text-slate-400">
+                  <td colSpan={11} className="py-8 text-center text-sm text-gray-500 dark:text-slate-400">
                     Nenhum anúncio para monitorar.
                   </td>
                 </tr>
@@ -191,6 +204,10 @@ export default function ListingsPage() {
                   const days = daysBetween(it.listed_at);
                   const okImgs = (it.images_count ?? 0) >= 6;
                   const okDesc = it.has_full_description === true;
+                  const visits = Number(it.visits ?? 0);
+                  const sold = Number(it.sold_quantity ?? 0);
+                  const conversion = visits > 0 ? (sold / visits) * 100 : 0;
+                  const listingType = it.payload?.listing_type_id ?? it.payload?.listing_type ?? '—';
                   return (
                     <tr key={it.id}>
                       <td className="p-3">
@@ -225,6 +242,17 @@ export default function ListingsPage() {
                       </td>
                       <td className="p-3 text-center">
                         <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{it.price != null ? `R$ ${Number(it.price).toFixed(2)}` : '—'}</span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className="text-xs text-gray-600 dark:text-gray-300">{listingType}</span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{it.sold_quantity ?? 0}</span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className="text-xs text-gray-600 dark:text-gray-300">
+                          {visits > 0 ? `${conversion.toFixed(1)}%` : '—'}
+                        </span>
                       </td>
                       <td className="p-3 text-center">
                         <span className="badge badge-neutral">{it.status || 'Ativo'}</span>

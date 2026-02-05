@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { listMeliShipments } from '../lib/db';
-import { meliProcessWorker } from '../lib/meliApi';
+import { meliProcessWorker, meliSyncOrders } from '../lib/meliApi';
 import { useThemeMode } from './ThemeModeProvider';
 import { SidebarWidgetProvider } from './SidebarWidgetContext';
 import AlertsPopover from './AlertsPopover';
@@ -117,6 +117,7 @@ export default function AppLayout() {
     if (enabled === 'false') return;
     const run = async () => {
       try {
+        await meliSyncOrders();
         await meliProcessWorker();
       } catch {
         // silent

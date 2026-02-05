@@ -58,6 +58,16 @@ export async function meliProcessWorker(): Promise<{ processed: number }> {
   return res.json();
 }
 
+export async function meliSyncOrders(): Promise<{ synced: number }> {
+  const token = await getAccessToken();
+  const res = await fetch('/api/meli/orders/sync', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Falha ao sincronizar pedidos.');
+  return res.json();
+}
+
 export async function meliSyncItems(): Promise<{ synced: number }> {
   const token = await getAccessToken();
   const res = await fetch('/api/meli/items/sync', {

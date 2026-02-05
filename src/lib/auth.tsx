@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { ensureWorkspace } from './workspaceApi';
 
 type AuthCtx = {
   user: User | null;
@@ -27,13 +28,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(sess);
     setLoading(false);
 
-    // Se tiver sessão, garante tarefas do dia (não bloqueia login se falhar)
+    // Se tiver sessão, garante tarefas do dia e workspace
     if (sess) {
       try {
         const { error } = await supabase.rpc('ensure_daily_tasks');
         if (error) console.warn('ensure_daily_tasks error:', error.message);
       } catch (e) {
         console.warn('ensure_daily_tasks exception:', e);
+      }
+      try {
+        await ensureWorkspace();
+      } catch (e) {
+        console.warn('ensureWorkspace exception:', e);
       }
     }
   }

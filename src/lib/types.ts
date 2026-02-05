@@ -27,6 +27,7 @@ export type SaleStatus = 'completed' | 'cancelled' | 'returned' | 'exchanged';
 export type Sale = {
   id: string;
   product_id: string;
+  ml_order_id?: string | null;
   quantity: number;
   channel: string;
   region: string | null;

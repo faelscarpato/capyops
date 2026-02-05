@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { readCompanySettings, writeCompanySettings } from '../lib/companySettings';
 import PageHeader from '../ui/PageHeader';
 import SectionCard from '../ui/SectionCard';
+import { inviteWorkspaceMember } from '../lib/workspaceApi';
+import { listWorkspaceMembers, type WorkspaceMember } from '../lib/db';
 
 function toDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -16,6 +18,11 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState(() => readCompanySettings());
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [members, setMembers] = useState<WorkspaceMember[]>([]);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('member');
+  const [inviteMsg, setInviteMsg] = useState<string | null>(null);
+  const [inviting, setInviting] = useState(false);
 
   const logoPreview = useMemo(() => settings.logo_data_url || settings.logo_url, [settings.logo_data_url, settings.logo_url]);
 
@@ -33,6 +40,22 @@ export default function SettingsPage() {
     writeCompanySettings(settings);
   }, [settings]);
 
+  useEffect(() => {
+    let alive = true;
+    async function loadMembers() {
+      try {
+        const data = await listWorkspaceMembers();
+        if (alive) setMembers(data);
+      } catch {
+        // ignore
+      }
+    }
+    loadMembers();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   async function handleLogoUpload(file?: File | null) {
     if (!file) return;
     setBusy(true);
@@ -48,6 +71,26 @@ export default function SettingsPage() {
   function clearLogo() {
     update('logo_data_url', '');
     update('logo_url', '');
+  }
+
+  async function handleInvite() {
+    if (!inviteEmail.trim()) {
+      setInviteMsg('Informe um email válido.');
+      return;
+    }
+    setInviting(true);
+    setInviteMsg(null);
+    try {
+      await inviteWorkspaceMember(inviteEmail.trim(), inviteRole);
+      setInviteMsg('Convite enviado com sucesso.');
+      setInviteEmail('');
+      const data = await listWorkspaceMembers();
+      setMembers(data);
+    } catch (e: any) {
+      setInviteMsg(e?.message ?? 'Falha ao convidar colaborador.');
+    } finally {
+      setInviting(false);
+    }
   }
 
   return (
@@ -137,6 +180,64 @@ export default function SettingsPage() {
                 <div className="text-xs text-gray-400 dark:text-slate-500">Sem logo</div>
               )}
             </div>
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Colaboradores (SaaS)">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="md:col-span-2">
+            <div className="label mb-1">Email do colaborador</div>
+            <input
+              className="input"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              placeholder="colaborador@email.com"
+            />
+          </div>
+          <div>
+            <div className="label mb-1">Função</div>
+            <select className="input" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
+              <option value="member">Colaborador</option>
+              <option value="manager">Gestor</option>
+            </select>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center gap-2">
+          <button className="btn-primary" onClick={handleInvite} disabled={inviting}>
+            {inviting ? 'Enviando...' : 'Convidar'}
+          </button>
+          {inviteMsg ? <div className="text-xs text-gray-500 dark:text-slate-400">{inviteMsg}</div> : null}
+        </div>
+        <div className="mt-4 text-xs text-gray-500 dark:text-slate-400">
+          O colaborador terá acesso imediato aos dados desta conta ao aceitar o convite.
+        </div>
+        <div className="mt-4">
+          <div className="label mb-2">Equipe conectada</div>
+          <div className="table-scroll">
+            <table className="table-base w-full text-left text-xs">
+              <thead>
+                <tr>
+                  <th>Membro</th>
+                  <th>Owner</th>
+                  <th>Função</th>
+                </tr>
+              </thead>
+              <tbody>
+                {members.map((m) => (
+                  <tr key={m.id}>
+                    <td className="truncate">{m.member_id}</td>
+                    <td className="truncate">{m.owner_id}</td>
+                    <td>{m.role || '-'}</td>
+                  </tr>
+                ))}
+                {!members.length ? (
+                  <tr>
+                    <td colSpan={3} className="py-3 text-center text-gray-500">Nenhum colaborador ainda.</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
           </div>
         </div>
       </SectionCard>
