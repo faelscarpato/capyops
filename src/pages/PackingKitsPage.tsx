@@ -105,7 +105,7 @@ export default function PackingKitsPage() {
             </button>
             <button
               className="btn-primary flex items-center gap-2"
-              onClick={() => window.location.href = '/cadastros?tab=logistica&sub=kits'}
+              onClick={() => window.location.href = '/app/catalogo?catalogTab=produtos&regTab=logistica&sub=kits'}
             >
               <ExternalLink size={16} /> Gerenciar (Cadastros)
             </button>

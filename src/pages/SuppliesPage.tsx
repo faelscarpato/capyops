@@ -59,7 +59,7 @@ export default function SuppliesPage() {
             <button className="btn-ghost" onClick={refresh} disabled={loading}>
               {loading ? 'Atualizando...' : 'Atualizar'}
             </button>
-            <button className="btn-primary" onClick={() => window.location.href = '/cadastros'}>
+            <button className="btn-primary" onClick={() => window.location.href = '/app/catalogo?catalogTab=produtos&regTab=logistica&sub=insumos'}>
               Gerenciar em Cadastros
             </button>
           </div>

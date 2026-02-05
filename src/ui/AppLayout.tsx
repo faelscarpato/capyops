@@ -43,16 +43,24 @@ export default function AppLayout() {
     async function refreshDeadline() {
       try {
         const rows = await listMeliShipments(20);
+        const now = Date.now();
         const deadlines = rows
+          .filter((r) => {
+            const p = r.payload || {};
+            const status = String(p?.status ?? r.status ?? '').toLowerCase();
+            // Only show deadlines for shipments not yet in transit/delivered/cancelled.
+            const blocked = ['shipped', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled', 'returned', 'not_delivered'];
+            return !blocked.some((k) => status.includes(k));
+          })
           .map((r) => {
             const p = r.payload || {};
             return p?.shipping_option?.estimated_handling_limit?.date ??
               p?.estimated_handling_limit?.date ??
-              p?.date_created ??
               null;
           })
           .filter(Boolean)
           .map((d: any) => new Date(d).getTime())
+          .filter((t) => Number.isFinite(t) && t >= now)
           .sort((a, b) => a - b);
         if (active) setNextDeadline(deadlines.length ? new Date(deadlines[0]).toISOString() : null);
       } catch {

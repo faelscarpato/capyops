@@ -178,6 +178,24 @@ export type MlQuestion = {
   updated_at: string;
 };
 
+export type MeliMessage = {
+  id: string;
+  user_id: string;
+  ml_message_id: string;
+  payload: any | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MeliFeedback = {
+  id: string;
+  user_id: string;
+  ml_feedback_id: string;
+  payload: any | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type CompetitorTracking = {
   id: string;
   my_product_id: string;

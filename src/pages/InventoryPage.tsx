@@ -116,8 +116,14 @@ export default function InventoryPage() {
               <Download className="w-4 h-4" /> Exportar
             </button>
             <button
+              className="btn-ghost"
+              onClick={() => window.location.href = '/app/catalogo?catalogTab=previsao'}
+            >
+              Estoque preditivo
+            </button>
+            <button
               className="btn-primary"
-              onClick={() => window.location.href = '/cadastros?tab=estoque'}
+              onClick={() => window.location.href = '/app/catalogo?catalogTab=produtos&regTab=estoque'}
             >
               Gerenciar Estoque (Cadastros)
             </button>

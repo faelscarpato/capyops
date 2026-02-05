@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import PageHeader from '../ui/PageHeader';
-import SectionCard from '../ui/SectionCard';
 import ProductTab from '../features/registrations/ProductTab';
 import ClientTab from '../features/registrations/ClientTab';
 import SupplierTab from '../features/registrations/SupplierTab';
@@ -9,6 +7,7 @@ import AdsTab from '../features/registrations/AdsTab';
 import StockTab from '../features/registrations/StockTab';
 import MiniERPTab from '../features/registrations/MiniERPTab';
 import LogisticsTab from '../features/registrations/LogisticsTab';
+import { TaskTabs, useTaskTabs } from '../ui/TaskTabs';
 
 
 // Tabs
@@ -25,18 +24,9 @@ const TABS = [
 type TabId = typeof TABS[number]['id'];
 
 export default function RegistrationsPage() {
-    const [activeTab, setActiveTab] = useState<TabId>('produtos');
     const [searchParams] = useSearchParams();
-
-    useEffect(() => {
-        const raw = searchParams.get('tab');
-        if (!raw) return;
-        const normalized = raw === 'minierp' ? 'erp' : raw;
-        const allowed = TABS.map((t) => t.id);
-        if (allowed.includes(normalized as TabId)) {
-            setActiveTab(normalized as TabId);
-        }
-    }, [searchParams]);
+    const { activeTab, setActiveTab } = useTaskTabs(TABS, 'produtos', 'regTab');
+    const normalizedTab = activeTab === 'minierp' ? 'erp' : activeTab;
 
     const sub = searchParams.get('sub') ?? undefined;
 
@@ -47,43 +37,17 @@ export default function RegistrationsPage() {
                 subtitle="Central de gerenciamento de entidades do sistema."
             />
 
-            <div className="card p-2">
-                <nav className="flex flex-wrap gap-2" aria-label="Tabs">
-                    {TABS.map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`
-                whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-colors
-                ${activeTab === tab.id
-                                    ? 'bg-indigo-50 text-indigo-700 dark:bg-cyan-400/15 dark:text-cyan-200'
-                                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-slate-200'
-                                }
-              `}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </nav>
-            </div>
+            <TaskTabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} ariaLabel="Cadastros" />
 
             <div className="mt-4">
-                {activeTab === 'produtos' && <ProductTab />}
-                {activeTab === 'logistica' && <LogisticsTab initialSubTab={sub} />}
-                {activeTab === 'clientes' && <ClientTab />}
-                {activeTab === 'fornecedores' && <SupplierTab />}
-                {activeTab === 'anuncios' && <AdsTab />}
-                {activeTab === 'estoque' && <StockTab />}
-                {activeTab === 'erp' && <MiniERPTab initialSubTab={sub} />}
+                {normalizedTab === 'produtos' && <ProductTab />}
+                {normalizedTab === 'logistica' && <LogisticsTab initialSubTab={sub} />}
+                {normalizedTab === 'clientes' && <ClientTab />}
+                {normalizedTab === 'fornecedores' && <SupplierTab />}
+                {normalizedTab === 'anuncios' && <AdsTab />}
+                {normalizedTab === 'estoque' && <StockTab />}
+                {normalizedTab === 'erp' && <MiniERPTab initialSubTab={sub} />}
             </div>
         </div>
-    );
-}
-
-function PlaceholderTab({ name }: { name: string }) {
-    return (
-        <SectionCard title={name}>
-            <p className="text-gray-500 dark:text-slate-400">Conteúdo da aba {name} em desenvolvimento...</p>
-        </SectionCard>
     );
 }

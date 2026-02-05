@@ -62,7 +62,7 @@ export default function ExpensesPage() {
             <button className="btn-ghost" onClick={refresh} disabled={loading}>
               {loading ? 'Atualizando...' : 'Atualizar'}
             </button>
-            <button className="btn-primary" onClick={() => window.location.href = '/cadastros'}>
+            <button className="btn-primary" onClick={() => window.location.href = '/app/catalogo?catalogTab=produtos&regTab=erp&sub=despesas'}>
               Gerenciar Despesas (Cadastros)
             </button>
           </div>

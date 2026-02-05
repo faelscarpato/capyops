@@ -108,3 +108,13 @@ export async function meliDownloadLabel(shipmentId: string): Promise<void> {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+export async function meliSyncShipments(): Promise<{ synced: number }> {
+  const token = await getAccessToken();
+  const res = await fetch('/api/meli/shipments/sync', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Falha ao sincronizar envios.');
+  return res.json();
+}

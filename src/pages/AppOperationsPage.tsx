@@ -3,6 +3,8 @@ import SalesHistoryPage from './SalesHistoryPage';
 import OperationsShipmentsPanel from './OperationsShipmentsPanel';
 import OperationsPendingPanel from './OperationsPendingPanel';
 import OperationsAlertsPanel from './OperationsAlertsPanel';
+import OperationsMessagesPanel from './OperationsMessagesPanel';
+import OperationsFeedbackPanel from './OperationsFeedbackPanel';
 import QuestionsPage from './QuestionsPage';
 import QuotesPage from './QuotesPage';
 import NewSalePage from './NewSalePage';
@@ -14,6 +16,8 @@ const TABS = [
   { id: 'expedicao', label: 'Expedicao' },
   { id: 'pendencias', label: 'Pendencias' },
   { id: 'alertas', label: 'Alertas' },
+  { id: 'mensagens', label: 'Mensagens' },
+  { id: 'feedback', label: 'Feedback' },
   { id: 'perguntas', label: 'Perguntas' },
   { id: 'orcamentos', label: 'Orcamentos' },
   { id: 'nova-venda', label: 'Nova venda' },
@@ -32,6 +36,8 @@ export default function AppOperationsPage() {
       {activeTab === 'expedicao' && <OperationsShipmentsPanel />}
       {activeTab === 'pendencias' && <OperationsPendingPanel />}
       {activeTab === 'alertas' && <OperationsAlertsPanel />}
+      {activeTab === 'mensagens' && <OperationsMessagesPanel />}
+      {activeTab === 'feedback' && <OperationsFeedbackPanel />}
       {activeTab === 'perguntas' && <QuestionsPage />}
       {activeTab === 'orcamentos' && <QuotesPage />}
       {activeTab === 'nova-venda' && <NewSalePage />}

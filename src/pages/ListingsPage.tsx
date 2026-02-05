@@ -120,7 +120,7 @@ export default function ListingsPage() {
             <button className="btn-ghost flex items-center gap-1" onClick={() => exportToCSV(items, 'anuncios.csv')}>
               <Download size={16} /> CSV
             </button>
-            <button className="btn-primary" onClick={() => window.location.href = '/cadastros'}>
+            <button className="btn-primary" onClick={() => window.location.href = '/app/catalogo?catalogTab=produtos&regTab=anuncios'}>
               Gerenciar Anúncios (Cadastros)
             </button>
           </div>

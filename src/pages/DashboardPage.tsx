@@ -268,7 +268,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-12">
-        <div className="lg:col-span-8">
+        <div className="flex flex-col gap-4 lg:col-span-8">
           <SectionCard title="Resumo ML (hoje vs 30d)" action="...">
             <div className="space-y-4">
               <div className="grid gap-3 md:grid-cols-3">
@@ -296,34 +296,7 @@ export default function DashboardPage() {
               </div>
             </div>
           </SectionCard>
-        </div>
-        <div className="lg:col-span-4">
-          <SectionCard title="Pagamentos ML" action="...">
-            <div className="flex flex-col items-center gap-4">
-              <div className="relative flex h-40 w-40 items-center justify-center rounded-full" style={donutStyle}>
-                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white text-center text-sm font-semibold text-gray-800 shadow-soft dark:bg-slate-900 dark:text-slate-100">
-                  {loading ? '—' : `${okPercentRounded}%`}
-                  <br />
-                  <span className="text-xs font-medium text-gray-500 dark:text-slate-400">Pagos (30d)</span>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-500 dark:text-slate-400">
-                <span className="inline-flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-indigo-500" />
-                  Pagos
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-orange-400" />
-                  Outros
-                </span>
-              </div>
-            </div>
-          </SectionCard>
-        </div>
-      </div>
 
-      <div className="grid gap-4 lg:grid-cols-12">
-        <div className="lg:col-span-8">
           <SectionCard title="Produtos recentes" action="...">
             <div className="table-scroll">
               <table className="table-base w-full text-sm">
@@ -359,8 +332,40 @@ export default function DashboardPage() {
               ) : null}
             </div>
           </SectionCard>
+
+          <SectionCard title="Tarefas do dia">
+            <TodayTasksPanel
+              loading={loading}
+              tasks={tasks}
+              onToggle={toggleTask}
+              onCreate={handleCreateTask}
+            />
+          </SectionCard>
         </div>
-        <div className="lg:col-span-4">
+
+        <div className="flex flex-col gap-4 lg:col-span-4">
+          <SectionCard title="Pagamentos ML" action="...">
+            <div className="flex flex-col items-center gap-4">
+              <div className="relative flex h-40 w-40 items-center justify-center rounded-full" style={donutStyle}>
+                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white text-center text-sm font-semibold text-gray-800 shadow-soft dark:bg-slate-900 dark:text-slate-100">
+                  {loading ? '—' : `${okPercentRounded}%`}
+                  <br />
+                  <span className="text-xs font-medium text-gray-500 dark:text-slate-400">Pagos (30d)</span>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-500 dark:text-slate-400">
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-indigo-500" />
+                  Pagos
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-orange-400" />
+                  Outros
+                </span>
+              </div>
+            </div>
+          </SectionCard>
+
           <SectionCard title="Top selling products" action="...">
             <div className="space-y-4">
               {(products.length ? products.slice(0, 3) : []).map((p: any) => (
@@ -380,21 +385,7 @@ export default function DashboardPage() {
               ) : null}
             </div>
           </SectionCard>
-        </div>
-      </div>
 
-      <div className="grid gap-4 lg:grid-cols-12">
-        <div className="lg:col-span-8">
-          <SectionCard title="Tarefas do dia">
-            <TodayTasksPanel
-              loading={loading}
-              tasks={tasks}
-              onToggle={toggleTask}
-              onCreate={handleCreateTask}
-            />
-          </SectionCard>
-        </div>
-        <div className="lg:col-span-4">
           <SectionCard title="Alertas" action={<AlertTriangle className="h-4 w-4 text-gray-400 dark:text-slate-400" />}>
             <div className="space-y-3">
               {loading ? (

@@ -6,16 +6,16 @@ type TabItem = {
   label: string;
 };
 
-export function useTaskTabs(tabs: TabItem[], defaultTab: string) {
+export function useTaskTabs(tabs: readonly TabItem[], defaultTab: string, paramName = 'tab') {
   const [searchParams, setSearchParams] = useSearchParams();
   const allowed = useMemo(() => new Set(tabs.map((t) => t.id)), [tabs]);
-  const raw = searchParams.get('tab') ?? '';
+  const raw = searchParams.get(paramName) ?? '';
   const activeTab = allowed.has(raw) ? raw : defaultTab;
 
   function setActiveTab(next: string) {
     if (!allowed.has(next)) return;
     const params = new URLSearchParams(searchParams);
-    params.set('tab', next);
+    params.set(paramName, next);
     setSearchParams(params, { replace: true });
   }
 
@@ -28,7 +28,7 @@ export function TaskTabs({
   onChange,
   ariaLabel
 }: {
-  tabs: TabItem[];
+  tabs: readonly TabItem[];
   activeTab: string;
   onChange: (id: string) => void;
   ariaLabel: string;

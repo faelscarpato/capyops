@@ -216,7 +216,7 @@ export default function QuotesPage() {
               </button>
               <button
                 className="btn-primary flex items-center gap-2"
-                onClick={() => window.location.href = '/cadastros?tab=minierp&sub=cotacoes'}
+                onClick={() => window.location.href = '/app/catalogo?catalogTab=produtos&regTab=erp&sub=cotacoes'}
               >
                 <ExternalLink size={16} /> Gerenciar (Cadastros)
               </button>

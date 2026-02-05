@@ -16,7 +16,9 @@ import type {
   MlListing,
   Client,
   Supplier,
-  StockMovement
+  StockMovement,
+  MeliMessage,
+  MeliFeedback
 } from './types';
 
 async function resolveOwnerId(): Promise<string> {
@@ -805,6 +807,9 @@ export type MeliOrder = {
   updated_at: string;
 };
 
+export type MeliMessageRow = MeliMessage;
+export type MeliFeedbackRow = MeliFeedback;
+
 export async function listMeliOrders(limit = 50): Promise<MeliOrder[]> {
   const { data, error } = await supabase
     .from('meli_orders')
@@ -813,6 +818,26 @@ export async function listMeliOrders(limit = 50): Promise<MeliOrder[]> {
     .limit(limit);
   if (error) throw error;
   return (data as MeliOrder[]) ?? [];
+}
+
+export async function listMeliMessages(limit = 50): Promise<MeliMessageRow[]> {
+  const { data, error } = await supabase
+    .from('meli_messages')
+    .select('*')
+    .order('updated_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data as MeliMessageRow[]) ?? [];
+}
+
+export async function listMeliFeedback(limit = 50): Promise<MeliFeedbackRow[]> {
+  const { data, error } = await supabase
+    .from('meli_feedback')
+    .select('*')
+    .order('updated_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data as MeliFeedbackRow[]) ?? [];
 }
 
 export async function listMeliShipments(limit = 10): Promise<MeliShipment[]> {

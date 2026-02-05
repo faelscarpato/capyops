@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth';
 import AppLayout from './ui/AppLayout';
 import LoginPage from './pages/LoginPage';
@@ -16,6 +16,20 @@ function Protected({ children }: { children: JSX.Element }) {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-sm text-gray-600">Carregando...</div>;
   if (!user) return <Navigate to="/login" replace />;
   return children;
+}
+
+function RedirectWithSearch({
+  to,
+  mapSearch
+}: {
+  to: string;
+  mapSearch?: (params: URLSearchParams) => URLSearchParams;
+}) {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const nextParams = mapSearch ? mapSearch(params) : params;
+  const search = nextParams.toString();
+  return <Navigate to={`${to}${search ? `?${search}` : ''}`} replace />;
 }
 
 export default function App() {
@@ -41,16 +55,45 @@ export default function App() {
           <Route path="app/financeiro" element={<AppFinancePage />} />
           <Route path="app/config" element={<AppConfigPage />} />
 
-          <Route path="estoque" element={<Navigate to="/app/catalogo?tab=estoque" replace />} />
-          <Route path="insumos" element={<Navigate to="/app/catalogo?tab=insumos" replace />} />
-          <Route path="cadastros" element={<Navigate to="/app/catalogo?tab=produtos" replace />} />
+          <Route
+            path="estoque"
+            element={
+              <RedirectWithSearch
+                to="/app/catalogo"
+                mapSearch={(params) => {
+                  const next = new URLSearchParams(params);
+                  next.set('catalogTab', 'estoque');
+                  return next;
+                }}
+              />
+            }
+          />
+          <Route path="insumos" element={<Navigate to="/app/catalogo?catalogTab=insumos" replace />} />
+          <Route
+            path="cadastros"
+            element={
+              <RedirectWithSearch
+                to="/app/catalogo"
+                mapSearch={(params) => {
+                  const next = new URLSearchParams(params);
+                  const legacyTab = next.get('tab');
+                  if (!next.get('regTab') && legacyTab) {
+                    next.set('regTab', legacyTab === 'minierp' ? 'erp' : legacyTab);
+                  }
+                  next.delete('tab');
+                  next.set('catalogTab', 'produtos');
+                  return next;
+                }}
+              />
+            }
+          />
           <Route path="despesas" element={<Navigate to="/app/financeiro?tab=custos" replace />} />
-          <Route path="kits" element={<Navigate to="/app/catalogo?tab=kits" replace />} />
+          <Route path="kits" element={<Navigate to="/app/catalogo?catalogTab=kits" replace />} />
           <Route path="orcamentos" element={<Navigate to="/app/operacoes?tab=orcamentos" replace />} />
           <Route path="nova-venda" element={<Navigate to="/app/operacoes?tab=nova-venda" replace />} />
 
           <Route path="relatorios" element={<Navigate to="/app/financeiro?tab=relatorios" replace />} />
-          <Route path="anuncios" element={<Navigate to="/app/catalogo?tab=anuncios" replace />} />
+          <Route path="anuncios" element={<Navigate to="/app/catalogo?catalogTab=anuncios" replace />} />
           <Route path="sales-history" element={<Navigate to="/app/operacoes?tab=pedidos" replace />} />
           <Route path="precificador" element={<Navigate to="/app/financeiro?tab=margem" replace />} />
           <Route path="perguntas" element={<Navigate to="/app/operacoes?tab=perguntas" replace />} />
