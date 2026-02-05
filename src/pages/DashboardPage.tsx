@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { AlertTriangle, BarChart3, DollarSign, Package, Truck } from 'lucide-react';
+import { AlertTriangle, BarChart3, DollarSign, Package, Truck, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   createTodayTask,
   ensureTodayTasks,
-  getExceptionRateLastNDays,
-  getSalesSummaryLastNDays,
   getTodayTasks,
   listProducts,
+  listMeliOrders,
+  listMeliShipments,
+  getPendingMlQuestionsCount,
   setTaskDone
 } from '../lib/db';
 import { readCompanySettings } from '../lib/companySettings';
@@ -29,15 +30,31 @@ function fmtBRL(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+function isPaidOrder(order: any): boolean {
+  if (!order) return false;
+  if (order.status === 'paid') return true;
+  if (Array.isArray(order.payments)) {
+    return order.payments.some((p: any) => p?.status === 'approved' || p?.status === 'paid');
+  }
+  return false;
+}
+
+function getOrderDate(order: any): number | null {
+  const raw = order?.date_created || order?.date_closed || order?.date_last_updated;
+  if (!raw) return null;
+  const ts = new Date(raw).getTime();
+  return Number.isFinite(ts) ? ts : null;
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<Array<{ id: string; task_name: string; done: boolean }>>([]);
   const [products, setProducts] = useState<any[]>([]);
+  const [mlOrders, setMlOrders] = useState<any[]>([]);
+  const [mlShipments, setMlShipments] = useState<any[]>([]);
+  const [pendingQuestions, setPendingQuestions] = useState(0);
   const companySettings = readCompanySettings();
-  const [day, setDay] = useState<{ gross: number; net_est: number; count: number } | null>(null);
-  const [month, setMonth] = useState<{ gross: number; net_est: number; count: number } | null>(null);
-  const [exceptionRate, setExceptionRate] = useState<{ rate: number; total: number; problem: number } | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   async function refresh() {
@@ -45,18 +62,18 @@ export default function DashboardPage() {
     setLoading(true);
     try {
       await ensureTodayTasks(DEFAULT_TASKS);
-      const [t, p, s1, s30, rate] = await Promise.all([
+      const [t, p, orders, shipments, questions] = await Promise.all([
         getTodayTasks(),
         listProducts(),
-        getSalesSummaryLastNDays(1),
-        getSalesSummaryLastNDays(30),
-        getExceptionRateLastNDays(30)
+        listMeliOrders(200),
+        listMeliShipments(50),
+        getPendingMlQuestionsCount()
       ]);
       setTasks(t);
       setProducts(p);
-      setDay(s1);
-      setMonth(s30);
-      setExceptionRate(rate);
+      setMlOrders(orders ?? []);
+      setMlShipments(shipments ?? []);
+      setPendingQuestions(questions ?? 0);
     } catch (e: any) {
       setErr(e?.message ?? 'Erro ao carregar dados.');
     } finally {
@@ -81,6 +98,75 @@ export default function DashboardPage() {
   const tasksTotal = useMemo(() => tasks.length, [tasks]);
   const tasksPending = useMemo(() => tasks.filter(t => !t.done), [tasks]);
 
+  const mlSummary = useMemo(() => {
+    const now = Date.now();
+    const startDay = new Date();
+    startDay.setHours(0, 0, 0, 0);
+    const dayStart = startDay.getTime();
+    const last30 = now - 30 * 24 * 60 * 60 * 1000;
+
+    let ordersToday = 0;
+    let paidToday = 0;
+    let revenueToday = 0;
+    let orders30 = 0;
+    let paid30 = 0;
+    let revenue30 = 0;
+
+    for (const row of mlOrders) {
+      const order = row?.payload || row;
+      const ts = getOrderDate(order);
+      if (!ts) continue;
+      const paid = isPaidOrder(order);
+      const total = Number(order?.total_amount ?? 0);
+
+      if (ts >= dayStart) {
+        ordersToday += 1;
+        if (paid) {
+          paidToday += 1;
+          revenueToday += total;
+        }
+      }
+      if (ts >= last30) {
+        orders30 += 1;
+        if (paid) {
+          paid30 += 1;
+          revenue30 += total;
+        }
+      }
+    }
+
+    const paidRate30 = orders30 > 0 ? Math.round((paid30 / orders30) * 100) : 0;
+    return {
+      ordersToday,
+      paidToday,
+      revenueToday,
+      orders30,
+      paid30,
+      revenue30,
+      paidRate30
+    };
+  }, [mlOrders]);
+
+  const nextPostDeadline = useMemo(() => {
+    const deadlines = mlShipments
+      .map((s) => {
+        const p = s?.payload || {};
+        const date =
+          p?.shipping_option?.estimated_handling_limit?.date ??
+          p?.estimated_handling_limit?.date ??
+          p?.date_created ??
+          null;
+        if (!date) return null;
+        const ts = new Date(date).getTime();
+        return Number.isFinite(ts) ? ts : null;
+      })
+      .filter((v: number | null) => v != null) as number[];
+
+    if (!deadlines.length) return null;
+    deadlines.sort((a, b) => a - b);
+    return new Date(deadlines[0]).toLocaleString('pt-BR');
+  }, [mlShipments]);
+
   const effectiveTaxRateValue = useMemo(
     () => companySettings.tax_cbs + companySettings.tax_ibs + companySettings.tax_is,
     [companySettings.tax_cbs, companySettings.tax_ibs, companySettings.tax_is]
@@ -99,21 +185,20 @@ export default function DashboardPage() {
     setTasks(t);
   }
 
-
   function handleRefresh() {
     if (!loading) {
       refresh();
     }
   }
 
-  const okPercent = Math.max(0, 100 - (exceptionRate?.rate ?? 0));
+  const okPercent = Math.max(0, mlSummary.paidRate30);
   const okPercentRounded = Math.round(okPercent);
   const donutStyle: CSSProperties = {
     background: `conic-gradient(#5f5bff 0 ${okPercent}%, #ff8a65 ${okPercent}% 100%)`
   };
-  const dayNetPct = day?.gross ? Math.min(100, Math.round((day.net_est / day.gross) * 100)) : 0;
-  const dayCountPct = month?.count ? Math.min(100, Math.round((day?.count ?? 0) / month.count * 100)) : 0;
-  const monthNetPct = month?.gross ? Math.min(100, Math.round((month.net_est / month.gross) * 100)) : 0;
+  const dayRevenuePct = mlSummary.revenue30 ? Math.min(100, Math.round((mlSummary.revenueToday / mlSummary.revenue30) * 100)) : 0;
+  const dayOrdersPct = mlSummary.orders30 ? Math.min(100, Math.round((mlSummary.ordersToday / mlSummary.orders30) * 100)) : 0;
+  const monthPaidPct = mlSummary.orders30 ? Math.min(100, Math.round((mlSummary.paid30 / mlSummary.orders30) * 100)) : 0;
 
   return (
     <div className="space-y-6">
@@ -135,25 +220,25 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          title="Lucro hoje"
-          value={loading ? '—' : day ? fmtBRL(day.net_est) : '—'}
+          title="Receita ML hoje"
+          value={loading ? '—' : fmtBRL(mlSummary.revenueToday)}
           subtitle={
             <span className="text-xs">
-              Bruto: {day ? fmtBRL(day.gross) : '—'} • Vendas: {day ? day.count : '—'}
+              Pedidos: {mlSummary.ordersToday} • Pagos: {mlSummary.paidToday}
             </span>
           }
           icon={<DollarSign className="h-4 w-4" />}
-          onClick={() => navigate('/relatorios')}
-          hrefLabel="Abrir relatórios"
+          onClick={() => navigate('/sales-history')}
+          hrefLabel="Histórico ML"
         />
 
         <KpiCard
-          title="Vendas hoje"
-          value={loading ? '—' : day ? String(day.count) : '—'}
-          subtitle={<span className="text-xs">Clique para registrar uma nova venda e baixar estoque.</span>}
+          title="Pedidos hoje"
+          value={loading ? '—' : String(mlSummary.ordersToday)}
+          subtitle={<span className="text-xs">Pagos hoje: {mlSummary.paidToday}</span>}
           icon={<BarChart3 className="h-4 w-4" />}
-          onClick={() => navigate('/nova-venda')}
-          hrefLabel="Nova venda"
+          onClick={() => navigate('/sales-history')}
+          hrefLabel="Ver pedidos"
         />
 
         <KpiCard
@@ -169,43 +254,43 @@ export default function DashboardPage() {
           hrefLabel="Abrir estoque"
         />
         <KpiCard
-          title="Últimos 30 dias"
-          value={loading ? '—' : month ? fmtBRL(month.gross) : '—'}
+          title="Receita ML 30d"
+          value={loading ? '—' : fmtBRL(mlSummary.revenue30)}
           subtitle={
             <span className="text-xs">
-              Lucro estimado: {month ? fmtBRL(month.net_est) : '—'} • Vendas: {month ? month.count : '—'}
+              Pedidos: {mlSummary.orders30} • Pagos: {mlSummary.paid30}
             </span>
           }
           icon={<DollarSign className="h-4 w-4" />}
-          onClick={() => navigate('/relatorios')}
-          hrefLabel="Abrir relatórios"
+          onClick={() => navigate('/sales-history')}
+          hrefLabel="Histórico ML"
         />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-12">
         <div className="lg:col-span-8">
-          <SectionCard title="Reports" action="...">
+          <SectionCard title="Resumo ML (hoje vs 30d)" action="...">
             <div className="space-y-4">
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-2xl bg-gray-50 p-4 dark:bg-slate-950">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">Lucro hoje</div>
-                  <div className="mt-2 text-xl font-bold text-gray-900 dark:text-slate-100">{day ? fmtBRL(day.net_est) : '—'}</div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">Receita hoje</div>
+                  <div className="mt-2 text-xl font-bold text-gray-900 dark:text-slate-100">{fmtBRL(mlSummary.revenueToday)}</div>
                   <div className="mt-2 h-2 w-full rounded-full bg-gray-200 dark:bg-slate-800">
-                    <div className="h-2 rounded-full bg-indigo-500" style={{ width: `${dayNetPct}%` }} />
+                    <div className="h-2 rounded-full bg-indigo-500" style={{ width: `${dayRevenuePct}%` }} />
                   </div>
                 </div>
                 <div className="rounded-2xl bg-gray-50 p-4 dark:bg-slate-950">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">Vendas hoje</div>
-                  <div className="mt-2 text-xl font-bold text-gray-900 dark:text-slate-100">{day ? day.count : '—'}</div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">Pedidos hoje</div>
+                  <div className="mt-2 text-xl font-bold text-gray-900 dark:text-slate-100">{mlSummary.ordersToday}</div>
                   <div className="mt-2 h-2 w-full rounded-full bg-gray-200 dark:bg-slate-800">
-                    <div className="h-2 rounded-full bg-amber-400" style={{ width: `${dayCountPct}%` }} />
+                    <div className="h-2 rounded-full bg-amber-400" style={{ width: `${dayOrdersPct}%` }} />
                   </div>
                 </div>
                 <div className="rounded-2xl bg-gray-50 p-4 dark:bg-slate-950">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">Lucro 30d</div>
-                  <div className="mt-2 text-xl font-bold text-gray-900 dark:text-slate-100">{month ? fmtBRL(month.net_est) : '—'}</div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">Pagos 30d</div>
+                  <div className="mt-2 text-xl font-bold text-gray-900 dark:text-slate-100">{mlSummary.paid30}</div>
                   <div className="mt-2 h-2 w-full rounded-full bg-gray-200 dark:bg-slate-800">
-                    <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${monthNetPct}%` }} />
+                    <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${monthPaidPct}%` }} />
                   </div>
                 </div>
               </div>
@@ -213,23 +298,23 @@ export default function DashboardPage() {
           </SectionCard>
         </div>
         <div className="lg:col-span-4">
-          <SectionCard title="Analytics" action="...">
+          <SectionCard title="Pagamentos ML" action="...">
             <div className="flex flex-col items-center gap-4">
               <div className="relative flex h-40 w-40 items-center justify-center rounded-full" style={donutStyle}>
                 <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white text-center text-sm font-semibold text-gray-800 shadow-soft dark:bg-slate-900 dark:text-slate-100">
                   {loading ? '—' : `${okPercentRounded}%`}
                   <br />
-                  <span className="text-xs font-medium text-gray-500 dark:text-slate-400">Pedidos ok</span>
+                  <span className="text-xs font-medium text-gray-500 dark:text-slate-400">Pagos (30d)</span>
                 </div>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-500 dark:text-slate-400">
                 <span className="inline-flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-indigo-500" />
-                  Ok
+                  Pagos
                 </span>
                 <span className="inline-flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-orange-400" />
-                  Retorno
+                  Outros
                 </span>
               </div>
             </div>
@@ -370,6 +455,13 @@ export default function DashboardPage() {
                   ))}
                 </>
               )}
+              <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  Perguntas pendentes
+                </div>
+                <div className="mt-1 text-sm font-semibold text-gray-900 dark:text-slate-100">{pendingQuestions}</div>
+              </div>
             </div>
           </SectionCard>
         </div>
@@ -395,29 +487,23 @@ export default function DashboardPage() {
           </div>
           <div className="card p-3">
             <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
-              Vendas hoje
+              Pedidos hoje
             </div>
-            <div className="mt-1 text-xl font-semibold text-gray-900 dark:text-slate-100">{day ? day.count : '—'}</div>
+            <div className="mt-1 text-xl font-semibold text-gray-900 dark:text-slate-100">{mlSummary.ordersToday}</div>
             <div className="text-sm text-gray-500 dark:text-slate-400">
-              Receita: {day ? fmtBRL(day.gross) : '—'}
+              Receita: {fmtBRL(mlSummary.revenueToday)}
             </div>
           </div>
           <div className="card p-3">
             <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
-              Impostos do dia
+              Prazo de postagem
             </div>
             <div className="mt-2 space-y-2">
-              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400">
-                <span>Aliquota combinada</span>
-                <span className={isHighTaxRate ? 'text-red-600 dark:text-red-300 font-semibold' : ''}>
-                  {effectiveTaxRate}%
-                </span>
+              <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">
+                {nextPostDeadline ?? 'Sem prazo'}
               </div>
               <div className="text-[10px] text-gray-400 dark:text-slate-500">
-                CBS {companySettings.tax_cbs}% • IBS {companySettings.tax_ibs}% • IS {companySettings.tax_is}%
-              </div>
-              <div className="text-[10px] text-gray-400 dark:text-slate-500">
-                Valores definidos em Configuracoes.
+                Baseado nos envios recentes do ML.
               </div>
             </div>
           </div>
@@ -426,13 +512,13 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <KpiCard
-          title="Taxa de devolução"
-          value={loading ? '—' : `${(exceptionRate?.rate ?? 0).toFixed(1)}%`}
-          subtitle={<span className="text-xs">{exceptionRate ? `${exceptionRate.problem} de ${exceptionRate.total} pedidos (30d)` : '—'}</span>}
+          title="Pagamentos ML (30d)"
+          value={loading ? '—' : `${okPercentRounded}%`}
+          subtitle={<span className="text-xs">{mlSummary.paid30} de {mlSummary.orders30} pedidos pagos</span>}
           icon={<Truck className="h-4 w-4" />}
           trend={
-            (exceptionRate?.rate ?? 0) > 2
-              ? { value: 'ALERTA > 2%', tone: 'negative' }
+            okPercentRounded < 80
+              ? { value: 'ALERTA', tone: 'negative' }
               : { value: 'OK', tone: 'positive' }
           }
         />
@@ -448,11 +534,8 @@ export default function DashboardPage() {
       </div>
 
       <p className="text-xs text-gray-500 dark:text-slate-400">
-        Nota: lucro e estimado com taxa ML padrao (17%) quando nao informado na venda.
+        Nota: KPIs baseados nos pedidos Mercado Livre e status de pagamento.
       </p>
     </div>
   );
 }
-
-
-

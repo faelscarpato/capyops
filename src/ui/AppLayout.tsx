@@ -2,23 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  BarChart3,
-  Calculator,
-  ClipboardCheck,
-  Grid2x2,
-  LayoutDashboard,
   LogOut,
   Menu,
-  Package,
-  ReceiptText,
-  Boxes,
-  CreditCard,
-  Layers,
-  FileText,
-  TrendingUp,
-  Settings,
-  History,
-  Link2
+  TrendingUp
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { listMeliShipments } from '../lib/db';
@@ -27,24 +13,7 @@ import { useThemeMode } from './ThemeModeProvider';
 import { SidebarWidgetProvider } from './SidebarWidgetContext';
 import AlertsPopover from './AlertsPopover';
 import logoCapyops from '../assets/logocapyops.png';
-
-const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/anuncios', label: 'Anuncios', icon: Grid2x2 },
-  { to: '/integracoes/mercado-livre', label: 'Integracoes ML', icon: Link2 },
-  { to: '/configuracoes', label: 'Configuracoes', icon: Settings },
-  { to: '/estoque', label: 'Estoque', icon: Package },
-  { to: '/cadastros', label: 'Cadastros', icon: ClipboardCheck },
-  { to: '/insumos', label: 'Insumos', icon: Boxes },
-  { to: '/despesas', label: 'Despesas', icon: CreditCard },
-  { to: '/kits', label: 'Kits', icon: Layers },
-  { to: '/orcamentos', label: 'Orcamentos', icon: FileText },
-
-  { to: '/sales-history', label: 'Historico de vendas', icon: History },
-  { to: '/precificador', label: 'Precificador', icon: Calculator },
-  { to: '/relatorios', label: 'Relatorios', icon: BarChart3 },
-  { to: '/plano-marketing', label: 'Plano Mkt + Operacao', icon: ClipboardCheck }
-];
+import { PRIMARY_NAV_ITEMS } from './navConfig';
 
 export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -57,23 +26,10 @@ export default function AppLayout() {
 
   const activeMap = useMemo(() => {
     const path = location.pathname;
-    return {
-      '/': path === '/',
-      '/anuncios': path.startsWith('/anuncios'),
-      '/integracoes/mercado-livre': path.startsWith('/integracoes/mercado-livre'),
-
-      '/configuracoes': path.startsWith('/configuracoes'),
-      '/estoque': path.startsWith('/estoque'),
-      '/insumos': path.startsWith('/insumos'),
-      '/despesas': path.startsWith('/despesas'),
-      '/kits': path.startsWith('/kits'),
-      '/orcamentos': path.startsWith('/orcamentos'),
-
-      '/sales-history': path.startsWith('/sales-history'),
-      '/precificador': path.startsWith('/precificador'),
-      '/relatorios': path.startsWith('/relatorios'),
-      '/plano-marketing': path.startsWith('/plano-marketing')
-    };
+    return PRIMARY_NAV_ITEMS.reduce<Record<string, boolean>>((acc, item) => {
+      acc[item.to] = item.end ? path === item.to : path.startsWith(item.to);
+      return acc;
+    }, {});
   }, [location.pathname]);
 
   async function onSignOut() {
@@ -142,7 +98,7 @@ export default function AppLayout() {
 
       <nav className="px-4 pb-4">
         <ul className="space-y-1.5">
-          {navItems.map((item) => {
+          {PRIMARY_NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const selected = activeMap[item.to as keyof typeof activeMap];
             return (
@@ -264,13 +220,40 @@ export default function AppLayout() {
         </header>
 
         <SidebarWidgetProvider setSidebarContent={setSidebarContent}>
-          <main className="flex-1 min-w-0 overflow-x-hidden px-4 py-6 md:px-6">
+          <main className="flex-1 min-w-0 overflow-x-hidden px-4 py-6 md:px-6 pb-24 md:pb-6">
             <div className="mx-auto w-full max-w-5xl min-w-0">
               <Outlet />
             </div>
           </main>
         </SidebarWidgetProvider>
       </div>
+
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white px-2 py-2 shadow-lg dark:border-slate-800 dark:bg-slate-900 md:hidden no-print">
+        <ul className="grid grid-cols-5 gap-1">
+          {PRIMARY_NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const selected = activeMap[item.to as keyof typeof activeMap];
+            return (
+              <li key={`bottom-${item.to}`}>
+                <NavLink
+                  to={item.to}
+                  end={(item as any).end}
+                  className={[
+                    'flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-semibold transition',
+                    selected
+                      ? 'bg-indigo-50 text-indigo-700 dark:bg-cyan-400/15 dark:text-cyan-200'
+                      : 'text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800/70'
+                  ].join(' ')}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="leading-none">{item.label}</span>
+                </NavLink>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
 
       {mobileOpen ? (
         <div className="fixed inset-0 z-40 flex md:hidden">
