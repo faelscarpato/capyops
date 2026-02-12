@@ -404,3 +404,163 @@
 .print-block {
   display: none;
 }
+
+/* =========================================================
+   RESPONSIVE PATCH — CapyOps (online)
+   Objetivo: não quebrar desktop, melhorar mobile
+========================================================= */
+
+/* 1) Evitar overflow lateral por strings longas (IDs, emails, URLs, etc.) */
+@layer base {
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Permite que textos longos quebrem em qualquer lugar, sem estourar layout */
+  * {
+    min-width: 0;
+  }
+
+  .break-anywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
+/* 2) Container/padding padrão pra mobile (se você usa wrappers genéricos) */
+@layer utilities {
+  .page-container {
+    width: 100%;
+    max-width: 1200px;
+    margin-inline: auto;
+    padding-inline: 16px;
+  }
+
+  @media (max-width: 640px) {
+    .page-container {
+      padding-inline: 12px; /* mais “app-like” */
+    }
+  }
+}
+
+/* 3) TABELAS — responsivo de verdade */
+@layer components {
+  /* A) No mobile: remover min-width que força scroll exagerado */
+  @media (max-width: 640px) {
+    .table-base {
+      min-width: 100%;
+      font-size: 0.82rem;
+    }
+
+    .table-scroll {
+      max-height: 70vh; /* mais confortável em celular */
+    }
+
+    /* Sticky header em mobile causa bug em alguns navegadores:
+       desativa sticky em telas pequenas para estabilidade */
+    .table-base th {
+      position: static;
+    }
+  }
+
+  /* B) “Card table” opcional (sem alterar HTML):
+     Se você conseguir adicionar a classe .table-card em tabelas críticas, fica perfeito.
+     Ex.: <table class="table-base table-card"> */
+  @media (max-width: 640px) {
+    .table-card {
+      border-spacing: 0 10px;
+      border-collapse: separate;
+    }
+
+    .table-card thead {
+      display: none;
+    }
+
+    .table-card tbody tr {
+      display: block;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 14px;
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .dark .table-card tbody tr {
+      border-color: var(--dark-border);
+      background: var(--dark-surface);
+    }
+
+    .table-card td {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+    }
+
+    .dark .table-card td {
+      border-color: var(--dark-border);
+    }
+
+    .table-card td:last-child {
+      border-bottom: 0;
+    }
+
+    /* Para o label do campo (precisa que cada td tenha data-label no HTML)
+       Ex.: <td data-label="Anúncio">...</td> */
+    .table-card td::before {
+      content: attr(data-label);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted-2);
+    }
+
+    .dark .table-card td::before {
+      color: var(--dark-muted-2);
+    }
+  }
+}
+
+/* 4) Botões e inputs mais touch-friendly no mobile */
+@layer components {
+  @media (max-width: 640px) {
+    .btn {
+      padding: 0.7rem 0.95rem; /* mais fácil de tocar */
+    }
+
+    .icon-btn {
+      padding: 0.65rem;
+    }
+
+    .input {
+      padding: 0.75rem 0.85rem;
+    }
+  }
+}
+
+/* 5) Melhorias para iOS/Android (scroll + safe area) */
+@layer base {
+  /* evita “zoom” em inputs no iOS por fonte pequena */
+  @media (max-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
+}
+
+/* 6) Safe-area (se você tem bottom nav fixa, isso evita conteúdo escondido) */
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
