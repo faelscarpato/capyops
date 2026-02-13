@@ -1,0 +1,26 @@
+{
+  "packageId": "com.capyops.app",
+  "host": "capyops.pages.dev",
+  "name": "CapyOps",
+  "launcherName": "CapyOps",
+  "display": "standalone",
+  "themeColor": "#13a4ec",
+  "themeColorDark": "#13a4ec",
+  "navigationColor": "#13a4ec",
+  "navigationColorDark": "#13a4ec",
+  "backgroundColor": "#ffffff",
+  "startUrl": "/",
+  "iconUrl": "https://capyops.pages.dev/icons/icon-512x512.png",
+  "maskableIconUrl": "https://capyops.pages.dev/icons/icon-512x512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./capyops-twa.jks",
+    "alias": "capyops"
+  },
+  "appVersionName": "0.1.0",
+  "appVersionCode": 1,
+  "enableNotifications": true,
+  "webManifestUrl": "https://capyops.pages.dev/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "generatorApp": "bubblewrap-cli"
+}
