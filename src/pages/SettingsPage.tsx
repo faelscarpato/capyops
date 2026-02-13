@@ -4,6 +4,7 @@ import PageHeader from '../ui/PageHeader';
 import SectionCard from '../ui/SectionCard';
 import { inviteWorkspaceMember } from '../lib/workspaceApi';
 import { listWorkspaceMembers, type WorkspaceMember } from '../lib/db';
+import InstallOptionsPanel from '../components/InstallOptionsPanel';
 
 function toDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -110,6 +111,10 @@ export default function SettingsPage() {
           {msg}
         </div>
       ) : null}
+
+      <SectionCard title="Instalacao do aplicativo">
+        <InstallOptionsPanel />
+      </SectionCard>
 
       <SectionCard title="Identidade da loja">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

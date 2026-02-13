@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Boxes } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { Navigate } from 'react-router-dom';
+import InstallAppCard from '../components/InstallAppCard';
 
 export default function LoginPage() {
   const { user, signInWithPassword, signUpWithPassword, signInMagicLink } = useAuth();
@@ -46,6 +47,7 @@ export default function LoginPage() {
               </p>
             </div>
 
+            <InstallAppCard />
             <div className="card p-6">
               <div className="grid grid-cols-3 gap-2 rounded-2xl bg-gray-50 p-2 text-sm dark:bg-white/5">
                 <button
@@ -152,3 +154,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
