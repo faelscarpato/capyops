@@ -1,5 +1,13 @@
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { MoreHorizontal } from 'lucide-react';
+import { Button } from './primitives/Button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from './primitives/DropdownMenu';
 
 type TabItem = {
   id: string;
@@ -33,24 +41,53 @@ export function TaskTabs({
   onChange: (id: string) => void;
   ariaLabel: string;
 }) {
+  const compactTabs = tabs.length > 6 ? tabs.slice(0, 5) : tabs;
+  const overflowTabs = tabs.length > 6 ? tabs.slice(5) : [];
+  const activeOverflow = overflowTabs.find((tab) => tab.id === activeTab);
+
   return (
     <div className="card p-2">
-      <nav className="flex flex-wrap gap-2" aria-label={ariaLabel}>
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => onChange(tab.id)}
-            className={[
-              'whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-colors',
-              activeTab === tab.id
-                ? 'bg-indigo-50 text-indigo-700 dark:bg-cyan-400/15 dark:text-cyan-200'
-                : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-slate-200'
-            ].join(' ')}
-            type="button"
-          >
-            {tab.label}
-          </button>
-        ))}
+      <nav className="flex items-center gap-2" aria-label={ariaLabel}>
+        <div className="flex-1 overflow-x-auto">
+          <div className="flex min-w-max gap-2 pr-1 snap-x">
+            {compactTabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => onChange(tab.id)}
+                className={[
+                  'snap-start whitespace-nowrap rounded-lg border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 ring-default',
+                  activeTab === tab.id
+                    ? 'border-[color:var(--primary)] bg-[color:var(--surface-2)] text-[color:var(--primary)]'
+                    : 'border-transparent text-muted hover:border-default hover:bg-surface-2 hover:text-fg'
+                ].join(' ')}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-current={activeTab === tab.id ? 'page' : undefined}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {overflowTabs.length ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant={activeOverflow ? 'secondary' : 'ghost'} size="sm" aria-label="Mais abas">
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="hidden sm:inline">{activeOverflow ? activeOverflow.label : 'Mais'}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {overflowTabs.map((tab) => (
+                <DropdownMenuItem key={tab.id} onSelect={() => onChange(tab.id)}>
+                  {tab.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
       </nav>
     </div>
   );
