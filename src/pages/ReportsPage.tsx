@@ -3,12 +3,9 @@ import type { Expense, PackingKit, PackingKitItem, Product, Supply } from '../li
 import type { Chart as ChartType } from 'chart.js';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import { Document, ImageRun, Packer, Paragraph, Table, TableCell, TableRow, TextRun } from 'docx';
-import { saveAs } from 'file-saver';
 import PageHeader from '../ui/PageHeader';
 import SectionCard from '../ui/SectionCard';
+import DataToolbar from '../ui/DataToolbar';
 import {
   listAllPackingKitItems,
   listExpensesInRange,
@@ -116,7 +113,8 @@ function dataUrlToUint8Array(dataUrl: string) {
   return bytes;
 }
 
-function buildDocxTable(headers: string[], rows: Array<Array<string | number>>) {
+function buildDocxTable(headers: string[], rows: Array<Array<string | number>>, docx: any) {
+  const { Table, TableCell, TableRow, Paragraph, TextRun } = docx;
   return new Table({
     width: { size: 100, type: 'pct' },
     rows: [
@@ -151,6 +149,7 @@ export default function ReportsPage() {
   const [expenseGranularity, setExpenseGranularity] = useState<'day' | 'week' | 'month' | 'year'>('month');
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   const [salesRows, setSalesRows] = useState<any[]>([]);
   const [expenseRows, setExpenseRows] = useState<Expense[]>([]);
@@ -319,6 +318,46 @@ export default function ReportsPage() {
     };
   }, [salesRows, productMap]);
 
+  const filteredInventoryRows = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return inventoryRows;
+    return inventoryRows.filter((p) =>
+      `${p.name} ${p.variant ?? ''} ${p.sku ?? ''}`.toLowerCase().includes(term)
+    );
+  }, [inventoryRows, search]);
+
+  const filteredSuppliesRows = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return suppliesRows;
+    return suppliesRows.filter((s) => `${s.name} ${s.supplier_name ?? ''}`.toLowerCase().includes(term));
+  }, [suppliesRows, search]);
+
+  const filteredPredictiveRows = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return predictiveRows;
+    return predictiveRows.filter((row) =>
+      `${row.product.name} ${row.product.variant ?? ''}`.toLowerCase().includes(term)
+    );
+  }, [predictiveRows, search]);
+
+  const filteredKits = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return kits;
+    return kits.filter((kit) => `${kit.name} ${kit.notes ?? ''}`.toLowerCase().includes(term));
+  }, [kits, search]);
+
+  const filteredTopProducts = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return topProducts.top;
+    return topProducts.top.filter((row) => row.label.toLowerCase().includes(term));
+  }, [topProducts.top, search]);
+
+  const filteredBottomProducts = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return topProducts.bottom;
+    return topProducts.bottom.filter((row) => row.label.toLowerCase().includes(term));
+  }, [topProducts.bottom, search]);
+
   const expenseChart = useMemo(() => {
     return {
       labels: expenseSeries.map((r) => r.label),
@@ -388,7 +427,8 @@ export default function ReportsPage() {
     URL.revokeObjectURL(url);
   }
 
-  function exportReportsPdf() {
+  async function exportReportsPdf() {
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const pageHeight = doc.internal.pageSize.getHeight();
     const marginX = 14;
@@ -504,12 +544,17 @@ export default function ReportsPage() {
   }
 
   async function exportReportsDocx() {
+    const [docx, { saveAs }] = await Promise.all([
+      import('docx'),
+      import('file-saver')
+    ]);
+    const { Document, ImageRun, Packer, Paragraph, TextRun } = docx;
     const salesChartImg = chartToDataUrl(salesChartRef);
     const netChartImg = chartToDataUrl(netChartRef);
     const expenseChartImg = chartToDataUrl(expenseChartRef);
     const regionChartImg = chartToDataUrl(regionChartRef);
 
-    const children: Array<Paragraph | Table> = [
+    const children: any[] = [
       new Paragraph({ children: [new TextRun({ text: 'Relatorios', bold: true, size: 28 })] }),
       new Paragraph(`Periodo: ${startDate} ate ${endDate}`),
       new Paragraph('')
@@ -543,7 +588,8 @@ export default function ReportsPage() {
       new Paragraph({ children: [new TextRun({ text: 'Resumo de vendas', bold: true })] }),
       buildDocxTable(
         ['Periodo', 'Receita', 'Lucro', 'Vendas'],
-        salesSeries.map((r) => [r.label, fmtBRL(r.gross), fmtBRL(r.net), r.count])
+        salesSeries.map((r) => [r.label, fmtBRL(r.gross), fmtBRL(r.net), r.count]),
+        docx
       ),
       new Paragraph('')
     );
@@ -552,7 +598,8 @@ export default function ReportsPage() {
       new Paragraph({ children: [new TextRun({ text: 'Despesas', bold: true })] }),
       buildDocxTable(
         ['Periodo', 'Total'],
-        expenseSeries.map((r) => [r.label, fmtBRL(r.total)])
+        expenseSeries.map((r) => [r.label, fmtBRL(r.total)]),
+        docx
       ),
       new Paragraph('')
     );
@@ -566,7 +613,8 @@ export default function ReportsPage() {
           p.stock,
           p.min_stock,
           p.status
-        ])
+        ]),
+        docx
       ),
       new Paragraph('')
     );
@@ -575,7 +623,8 @@ export default function ReportsPage() {
       new Paragraph({ children: [new TextRun({ text: 'Insumos', bold: true })] }),
       buildDocxTable(
         ['Insumo', 'Fornecedor', 'Valor'],
-        suppliesRows.map((s) => [s.name, s.supplier_name ?? '-', fmtBRL(s.total_value)])
+        suppliesRows.map((s) => [s.name, s.supplier_name ?? '-', fmtBRL(s.total_value)]),
+        docx
       ),
       new Paragraph('')
     );
@@ -590,7 +639,8 @@ export default function ReportsPage() {
           row.avgDaily.toFixed(2),
           Number.isFinite(row.daysRemaining) ? row.daysRemaining.toFixed(1) : '-',
           row.status
-        ])
+        ]),
+        docx
       ),
       new Paragraph('')
     );
@@ -599,20 +649,21 @@ export default function ReportsPage() {
       new Paragraph({ children: [new TextRun({ text: 'Kits cadastrados', bold: true })] }),
       buildDocxTable(
         ['Kit', 'Itens', 'Notas'],
-        kits.map((kit) => [kit.name, kitCounts.get(kit.id) ?? 0, kit.notes ?? '-'])
+        kits.map((kit) => [kit.name, kitCounts.get(kit.id) ?? 0, kit.notes ?? '-']),
+        docx
       ),
       new Paragraph('')
     );
 
     children.push(
       new Paragraph({ children: [new TextRun({ text: 'Top produtos vendidos', bold: true })] }),
-      buildDocxTable(['Produto', 'Qtd'], topProducts.top.map((row) => [row.label, row.qty])),
+      buildDocxTable(['Produto', 'Qtd'], topProducts.top.map((row) => [row.label, row.qty]), docx),
       new Paragraph('')
     );
 
     children.push(
       new Paragraph({ children: [new TextRun({ text: 'Menos vendidos', bold: true })] }),
-      buildDocxTable(['Produto', 'Qtd'], topProducts.bottom.map((row) => [row.label, row.qty]))
+      buildDocxTable(['Produto', 'Qtd'], topProducts.bottom.map((row) => [row.label, row.qty]), docx)
     );
 
     const doc = new Document({ sections: [{ children }] });
@@ -688,7 +739,7 @@ export default function ReportsPage() {
     sections.push(...topProducts.bottom.map((row) => padRow([row.label, String(row.qty)], [24, 6])));
 
     const blob = new Blob([sections.join('\n')], { type: 'text/plain;charset=utf-8;' });
-    saveAs(blob, `relatorios-${startDate}-a-${endDate}.txt`);
+    import('file-saver').then(({ saveAs }) => saveAs(blob, `relatorios-${startDate}-a-${endDate}.txt`));
   }
 
   return (
@@ -722,6 +773,19 @@ export default function ReportsPage() {
           {err}
         </div>
       ) : null}
+
+      <DataToolbar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Buscar produto, kit, insumo ou fornecedor..."
+        filterAction={null}
+        sortAction={null}
+        extraActions={
+          <div className="text-xs text-[color:var(--muted)]">
+            {filteredInventoryRows.length} produtos • {filteredSuppliesRows.length} insumos
+          </div>
+        }
+      />
 
       <SectionCard title="Filtro por periodo">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
@@ -791,14 +855,14 @@ export default function ReportsPage() {
         <div className="md:col-span-6">
           <SectionCard title="Top produtos vendidos">
             <div className="space-y-2">
-              {topProducts.top.map((row) => (
-                <div key={row.id} className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-slate-800">
+              {filteredTopProducts.map((row) => (
+                <div key={row.id} className="flex items-center justify-between rounded-lg border border-[color:var(--border)] px-3 py-2 text-sm">
                   <span>{row.label}</span>
                   <span className="font-semibold">{row.qty} un</span>
                 </div>
               ))}
-              {!topProducts.top.length ? (
-                <div className="text-sm text-gray-500 dark:text-slate-400">Sem dados de vendas.</div>
+              {!filteredTopProducts.length ? (
+                <div className="text-sm text-[color:var(--muted)]">Sem dados de vendas.</div>
               ) : null}
             </div>
           </SectionCard>
@@ -806,14 +870,14 @@ export default function ReportsPage() {
         <div className="md:col-span-6">
           <SectionCard title="Menos vendidos">
             <div className="space-y-2">
-              {topProducts.bottom.map((row) => (
-                <div key={row.id} className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-slate-800">
+              {filteredBottomProducts.map((row) => (
+                <div key={row.id} className="flex items-center justify-between rounded-lg border border-[color:var(--border)] px-3 py-2 text-sm">
                   <span>{row.label}</span>
                   <span className="font-semibold">{row.qty} un</span>
                 </div>
               ))}
-              {!topProducts.bottom.length ? (
-                <div className="text-sm text-gray-500 dark:text-slate-400">Sem dados de vendas.</div>
+              {!filteredBottomProducts.length ? (
+                <div className="text-sm text-[color:var(--muted)]">Sem dados de vendas.</div>
               ) : null}
             </div>
           </SectionCard>
@@ -832,8 +896,8 @@ export default function ReportsPage() {
               </tr>
             </thead>
             <tbody>
-              {inventoryRows.map((p) => (
-                <tr key={p.id} className="border-b border-gray-100 dark:border-slate-800">
+              {filteredInventoryRows.map((p) => (
+                <tr key={p.id}>
                   <td className="px-2 py-3">{p.name} {p.size_cm ? `${p.size_cm}cm` : ''} • {p.variant}</td>
                   <td className="px-2 py-3 text-center">{p.stock}</td>
                   <td className="px-2 py-3 text-center">{p.min_stock}</td>
@@ -850,9 +914,9 @@ export default function ReportsPage() {
                   </td>
                 </tr>
               ))}
-              {!inventoryRows.length ? (
+              {!filteredInventoryRows.length ? (
                 <tr>
-                  <td colSpan={4} className="px-2 py-6 text-center text-sm text-gray-500 dark:text-slate-400">
+                  <td colSpan={4} className="px-2 py-6 text-center text-sm text-[color:var(--muted)]">
                     Nenhum produto cadastrado.
                   </td>
                 </tr>
@@ -873,16 +937,16 @@ export default function ReportsPage() {
               </tr>
             </thead>
             <tbody>
-              {suppliesRows.map((s) => (
-                <tr key={s.id} className="border-b border-gray-100 dark:border-slate-800">
+              {filteredSuppliesRows.map((s) => (
+                <tr key={s.id}>
                   <td className="px-2 py-3">{s.name}</td>
                   <td className="px-2 py-3">{s.supplier_name ?? '—'}</td>
                   <td className="px-2 py-3 text-right">{fmtBRL(s.total_value)}</td>
                 </tr>
               ))}
-              {!suppliesRows.length ? (
+              {!filteredSuppliesRows.length ? (
                 <tr>
-                  <td colSpan={3} className="px-2 py-6 text-center text-sm text-gray-500 dark:text-slate-400">
+                  <td colSpan={3} className="px-2 py-6 text-center text-sm text-[color:var(--muted)]">
                     Nenhum insumo cadastrado.
                   </td>
                 </tr>
@@ -905,8 +969,8 @@ export default function ReportsPage() {
               </tr>
             </thead>
             <tbody>
-              {predictiveRows.map((row) => (
-                <tr key={row.product.id} className="border-b border-gray-100 dark:border-slate-800">
+              {filteredPredictiveRows.map((row) => (
+                <tr key={row.product.id}>
                   <td className="px-2 py-3">{row.product.name} {row.product.size_cm ? `${row.product.size_cm}cm` : ''}</td>
                   <td className="px-2 py-3 text-right">{row.total30d.toFixed(1)}</td>
                   <td className="px-2 py-3 text-right">{row.avgDaily.toFixed(2)}</td>
@@ -926,9 +990,9 @@ export default function ReportsPage() {
                   </td>
                 </tr>
               ))}
-              {!predictiveRows.length ? (
+              {!filteredPredictiveRows.length ? (
                 <tr>
-                  <td colSpan={5} className="px-2 py-6 text-center text-sm text-gray-500 dark:text-slate-400">
+                  <td colSpan={5} className="px-2 py-6 text-center text-sm text-[color:var(--muted)]">
                     Nenhum produto encontrado.
                   </td>
                 </tr>
@@ -949,16 +1013,16 @@ export default function ReportsPage() {
               </tr>
             </thead>
             <tbody>
-              {kits.map((kit) => (
-                <tr key={kit.id} className="border-b border-gray-100 dark:border-slate-800">
+              {filteredKits.map((kit) => (
+                <tr key={kit.id}>
                   <td className="px-2 py-3">{kit.name}</td>
                   <td className="px-2 py-3 text-center">{kitCounts.get(kit.id) ?? 0}</td>
                   <td className="px-2 py-3">{kit.notes ?? '—'}</td>
                 </tr>
               ))}
-              {!kits.length ? (
+              {!filteredKits.length ? (
                 <tr>
-                  <td colSpan={3} className="px-2 py-6 text-center text-sm text-gray-500 dark:text-slate-400">
+                  <td colSpan={3} className="px-2 py-6 text-center text-sm text-[color:var(--muted)]">
                     Nenhum kit cadastrado.
                   </td>
                 </tr>

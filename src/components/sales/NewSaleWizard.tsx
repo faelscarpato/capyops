@@ -8,6 +8,7 @@ import SaleStepDetails from './SaleStepDetails';
 import SaleStepReview from './SaleStepReview';
 import type { SaleDraftItem } from './types';
 import { round2, toNumber } from './types';
+import { Button } from '../../ui/primitives/Button';
 
 type Step = 1 | 2 | 3;
 
@@ -260,10 +261,10 @@ export default function NewSaleWizard() {
       {banner ? (
         <div
           className={[
-            'mb-4 rounded-lg border p-3 text-sm',
-            banner.type === 'success' && 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200',
-            banner.type === 'error' && 'border-red-200 bg-red-50 text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200',
-            banner.type === 'info' && 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200'
+            'mb-4 rounded-lg border px-3 py-2 text-sm',
+            banner.type === 'success' && 'alert-success',
+            banner.type === 'error' && 'alert-error',
+            banner.type === 'info' && 'alert-warning'
           ]
             .filter(Boolean)
             .join(' ')}
@@ -273,15 +274,15 @@ export default function NewSaleWizard() {
       ) : null}
 
       {loadingProducts ? (
-        <div className="text-sm text-gray-600 dark:text-slate-300">Carregando produtos…</div>
+        <div className="text-sm text-muted">Carregando produtos…</div>
       ) : products.length === 0 ? (
-        <div className="text-sm text-gray-600 dark:text-slate-300">
+        <div className="text-sm text-muted">
           Nenhum produto ativo encontrado. Cadastre produtos no Estoque para registrar vendas.
         </div>
       ) : (
         <>
           {/* Step header */}
-          <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted">
             <div className="flex items-center gap-2">
               <StepDot active={step === 1} done={step > 1}>1</StepDot>
               <span className="hidden sm:inline">Produtos</span>
@@ -363,19 +364,21 @@ export default function NewSaleWizard() {
 
           {/* Navegação */}
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-between">
-            <button
+            <Button
               type="button"
-              className="btn-ghost order-2 sm:order-1"
+              variant="ghost"
+              className="order-2 sm:order-1"
               onClick={() => setStep((s) => (s > 1 ? ((s - 1) as Step) : s))}
               disabled={step === 1 || isSubmitting}
             >
               Voltar
-            </button>
+            </Button>
 
             {step < 3 ? (
-              <button
+              <Button
                 type="button"
-                className="btn-primary order-1 sm:order-2"
+                variant="primary"
+                className="order-1 sm:order-2"
                 onClick={() => setStep((s) => ((s + 1) as Step))}
                 disabled={
                   isSubmitting ||
@@ -384,7 +387,7 @@ export default function NewSaleWizard() {
                 }
               >
                 Avançar
-              </button>
+              </Button>
             ) : null}
           </div>
         </>
@@ -406,8 +409,8 @@ function StepDot({
     <div
       className={[
         'flex h-6 w-6 items-center justify-center rounded-full border text-xs font-semibold',
-        active && 'border-blue-500 text-blue-600 dark:border-cyan-300 dark:text-cyan-200',
-        done && 'bg-blue-600 text-white border-blue-600 dark:bg-cyan-300 dark:text-slate-950 dark:border-cyan-300'
+        active && 'border-[color:var(--primary)] text-[color:var(--primary)]',
+        done && 'border-[color:var(--success)] bg-[color:var(--success)] text-white'
       ]
         .filter(Boolean)
         .join(' ')}
@@ -418,5 +421,5 @@ function StepDot({
 }
 
 function Divider() {
-  return <div className="h-px flex-1 bg-gray-200 dark:bg-slate-800" />;
+  return <div className="h-px flex-1 bg-[color:var(--border)]" />;
 }

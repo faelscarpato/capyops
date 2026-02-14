@@ -22,7 +22,7 @@ export default function OperationsPendingPanel() {
     setErr(null);
     setLoading(true);
     try {
-      const [q, ev] = await Promise.all([listPendingMlQuestions(25), listInternalEvents(25)]);
+      const [q, ev] = await Promise.all([listPendingMlQuestions(25), listInternalEvents(25, { unreadOnly: true })]);
       setQuestions(q);
       setEvents(ev);
     } catch (e: any) {

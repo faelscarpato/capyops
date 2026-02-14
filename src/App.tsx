@@ -13,7 +13,7 @@ import AppConfigPage from './pages/AppConfigPage';
 
 function Protected({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-sm text-gray-600">Carregando...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-sm text-[color:var(--muted)]">Carregando...</div>;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 }
@@ -90,7 +90,7 @@ export default function App() {
           <Route path="despesas" element={<Navigate to="/app/financeiro?tab=custos" replace />} />
           <Route path="kits" element={<Navigate to="/app/catalogo?catalogTab=kits" replace />} />
           <Route path="orcamentos" element={<Navigate to="/app/operacoes?tab=orcamentos" replace />} />
-          <Route path="nova-venda" element={<Navigate to="/app/operacoes?tab=nova-venda" replace />} />
+          <Route path="nova-venda" element={<Navigate to="/app/operacoes?venda=nova" replace />} />
 
           <Route path="relatorios" element={<Navigate to="/app/financeiro?tab=relatorios" replace />} />
           <Route path="anuncios" element={<Navigate to="/app/catalogo?catalogTab=anuncios" replace />} />

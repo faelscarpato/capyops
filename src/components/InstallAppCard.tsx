@@ -61,7 +61,7 @@ export default function InstallAppCard() {
   if (!canShow) return null;
 
   return (
-    <div className="mb-4 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-900 dark:border-cyan-500/30 dark:bg-cyan-500/10 dark:text-cyan-100">
+    <div className="mb-4 rounded-xl border p-3 text-xs bg-[color:var(--surface-2)] border-[color:var(--border)] text-[color:var(--text)]">
       {isWindows ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span>No Windows, instale a versao desktop para usar como aplicativo nativo.</span>

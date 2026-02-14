@@ -20,33 +20,35 @@ export default function MiniERPTab({ initialSubTab }: { initialSubTab?: string }
 
     return (
         <div className="space-y-6">
-            <div className="flex border-b border-gray-200 dark:border-slate-700 table-scroll">
-                <button onClick={() => setSubTab('venda')} className={`px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap ${subTab === 'venda' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-gray-500'}`}>
+            <div className="table-scroll -mx-1 px-1">
+                <div className="flex min-w-max items-center gap-2 border-b border-default pb-1">
+                <button onClick={() => setSubTab('venda')} className={`rounded-md border px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${subTab === 'venda' ? 'border-[color:var(--primary)] bg-surface-2 text-[color:var(--primary)]' : 'border-transparent text-muted hover:border-default hover:bg-surface-2 hover:text-fg'}`}>
                     Nova Venda
                 </button>
-                <button onClick={() => setSubTab('despesas')} className={`px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap ${subTab === 'despesas' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-gray-500'}`}>
+                <button onClick={() => setSubTab('despesas')} className={`rounded-md border px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${subTab === 'despesas' ? 'border-[color:var(--primary)] bg-surface-2 text-[color:var(--primary)]' : 'border-transparent text-muted hover:border-default hover:bg-surface-2 hover:text-fg'}`}>
                     Despesas
                 </button>
-                <button onClick={() => setSubTab('cotacoes')} className={`px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap ${subTab === 'cotacoes' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-gray-500'}`}>
+                <button onClick={() => setSubTab('cotacoes')} className={`rounded-md border px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${subTab === 'cotacoes' ? 'border-[color:var(--primary)] bg-surface-2 text-[color:var(--primary)]' : 'border-transparent text-muted hover:border-default hover:bg-surface-2 hover:text-fg'}`}>
                     Cotações e Orçamentos
                 </button>
-                <button onClick={() => setSubTab('pagamentos')} className={`px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap ${subTab === 'pagamentos' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-gray-500'}`}>
+                <button onClick={() => setSubTab('pagamentos')} className={`rounded-md border px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${subTab === 'pagamentos' ? 'border-[color:var(--primary)] bg-surface-2 text-[color:var(--primary)]' : 'border-transparent text-muted hover:border-default hover:bg-surface-2 hover:text-fg'}`}>
                     Pagamentos
                 </button>
-                <button onClick={() => setSubTab('devolucao')} className={`px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap ${subTab === 'devolucao' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-gray-500'}`}>
+                <button onClick={() => setSubTab('devolucao')} className={`rounded-md border px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${subTab === 'devolucao' ? 'border-[color:var(--primary)] bg-surface-2 text-[color:var(--primary)]' : 'border-transparent text-muted hover:border-default hover:bg-surface-2 hover:text-fg'}`}>
                     Devolução
                 </button>
-                <button onClick={() => setSubTab('taxas')} className={`px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap ${subTab === 'taxas' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-gray-500'}`}>
+                <button onClick={() => setSubTab('taxas')} className={`rounded-md border px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${subTab === 'taxas' ? 'border-[color:var(--primary)] bg-surface-2 text-[color:var(--primary)]' : 'border-transparent text-muted hover:border-default hover:bg-surface-2 hover:text-fg'}`}>
                     Taxas
                 </button>
-                <button onClick={() => setSubTab('impostos')} className={`px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap ${subTab === 'impostos' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-gray-500'}`}>
+                <button onClick={() => setSubTab('impostos')} className={`rounded-md border px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${subTab === 'impostos' ? 'border-[color:var(--primary)] bg-surface-2 text-[color:var(--primary)]' : 'border-transparent text-muted hover:border-default hover:bg-surface-2 hover:text-fg'}`}>
                     Impostos
                 </button>
+                </div>
             </div>
 
             <div className="min-h-[400px]">
                 {subTab === 'despesas' && <ExpenseManager />}
-                {subTab === 'venda' && <div className="p-4 bg-gray-50 dark:bg-slate-900 rounded-lg"><NewSaleWizard /></div>}
+                {subTab === 'venda' && <div className="rounded-lg border border-default bg-surface-2 p-4"><NewSaleWizard /></div>}
                 {subTab === 'cotacoes' && <PurchaseQuoteManager />}
                 {subTab === 'pagamentos' && <PaymentManager />}
                 {subTab === 'devolucao' && <ReturnsManager />}

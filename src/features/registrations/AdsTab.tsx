@@ -10,22 +10,24 @@ export default function AdsTab() {
 
     return (
         <div className="space-y-6">
-            <div className="flex border-b border-gray-200 dark:border-slate-700 table-scroll">
-                <button onClick={() => setSubTab('categorias')} className={`px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap ${subTab === 'categorias' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-gray-500'}`}>
+            <div className="table-scroll -mx-1 px-1">
+                <div className="flex min-w-max items-center gap-2 border-b border-default pb-1">
+                <button onClick={() => setSubTab('categorias')} className={`rounded-md border px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${subTab === 'categorias' ? 'border-[color:var(--primary)] bg-surface-2 text-[color:var(--primary)]' : 'border-transparent text-muted hover:border-default hover:bg-surface-2 hover:text-fg'}`}>
                     Categorias
                 </button>
-                <button onClick={() => setSubTab('sku')} className={`px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap ${subTab === 'sku' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-gray-500'}`}>
+                <button onClick={() => setSubTab('sku')} className={`rounded-md border px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${subTab === 'sku' ? 'border-[color:var(--primary)] bg-surface-2 text-[color:var(--primary)]' : 'border-transparent text-muted hover:border-default hover:bg-surface-2 hover:text-fg'}`}>
                     SKU
                 </button>
-                <button onClick={() => setSubTab('plataformas')} className={`px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap ${subTab === 'plataformas' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-gray-500'}`}>
+                <button onClick={() => setSubTab('plataformas')} className={`rounded-md border px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${subTab === 'plataformas' ? 'border-[color:var(--primary)] bg-surface-2 text-[color:var(--primary)]' : 'border-transparent text-muted hover:border-default hover:bg-surface-2 hover:text-fg'}`}>
                     Plataformas
                 </button>
-                <button onClick={() => setSubTab('pagos')} className={`px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap ${subTab === 'pagos' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-gray-500'}`}>
+                <button onClick={() => setSubTab('pagos')} className={`rounded-md border px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${subTab === 'pagos' ? 'border-[color:var(--primary)] bg-surface-2 text-[color:var(--primary)]' : 'border-transparent text-muted hover:border-default hover:bg-surface-2 hover:text-fg'}`}>
                     Tráfego Pago
                 </button>
-                <button onClick={() => setSubTab('organicos')} className={`px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap ${subTab === 'organicos' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-gray-500'}`}>
+                <button onClick={() => setSubTab('organicos')} className={`rounded-md border px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${subTab === 'organicos' ? 'border-[color:var(--primary)] bg-surface-2 text-[color:var(--primary)]' : 'border-transparent text-muted hover:border-default hover:bg-surface-2 hover:text-fg'}`}>
                     Tráfego Orgânico
                 </button>
+                </div>
             </div>
 
             <div className="min-h-[400px] pt-4">

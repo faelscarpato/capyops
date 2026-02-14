@@ -11,6 +11,7 @@ import {
 import PageHeader from '../ui/PageHeader';
 import SectionCard from '../ui/SectionCard';
 import { ExternalLink } from 'lucide-react';
+import DataToolbar from '../ui/DataToolbar';
 
 function fmtBRL(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -46,6 +47,7 @@ export default function QuotesPage() {
   const [items, setItems] = useState<PurchaseQuoteItem[]>([]);
   const [allItems, setAllItems] = useState<PurchaseQuoteItem[]>([]);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -108,6 +110,18 @@ export default function QuotesPage() {
     () => quotes.find((q) => q.id === selectedQuoteId) ?? null,
     [quotes, selectedQuoteId]
   );
+
+  const filteredQuotes = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return quotes;
+    const quoteMatchesByItem = new Set(
+      allItems.filter((it) => (it.description ?? '').toLowerCase().includes(term)).map((it) => it.quote_id)
+    );
+    return quotes.filter((q) => {
+      const text = `${q.supplier_name} ${q.title ?? ''}`.toLowerCase();
+      return text.includes(term) || quoteMatchesByItem.has(q.id);
+    });
+  }, [allItems, quotes, search]);
 
   const selectedTotal = useMemo(() => {
     return items.reduce((sum, it) => sum + Number(it.qty ?? 0) * Number(it.unit_cost ?? 0), 0);
@@ -236,10 +250,22 @@ export default function QuotesPage() {
 
       <div className="no-print">
         <SectionCard title="Orcamentos cadastrados">
+          <DataToolbar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Buscar por fornecedor, título ou item..."
+            extraActions={
+              <div className="text-xs text-[color:var(--muted)]">
+                {loading ? 'Carregando...' : `${filteredQuotes.length} registros`}
+              </div>
+            }
+          />
+
+          <div className="mt-4 hidden md:block">
           <div className="table-scroll">
             <table className="table-base w-full text-left">
               <thead>
-                <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
+                <tr>
                   <th className="px-2 py-2 font-semibold">Fornecedor</th>
                   <th className="px-2 py-2 font-semibold">Titulo</th>
                   <th className="px-2 py-2 text-center font-semibold">Itens</th>
@@ -248,10 +274,10 @@ export default function QuotesPage() {
                 </tr>
               </thead>
               <tbody>
-                {quotes.map((q) => (
-                  <tr key={q.id} className="border-b border-gray-100 hover:bg-gray-50 dark:border-slate-800 dark:hover:bg-slate-900">
+                {filteredQuotes.map((q) => (
+                  <tr key={q.id}>
                     <td className="px-2 py-3">
-                      <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">{q.supplier_name}</div>
+                      <div className="text-sm font-semibold text-[color:var(--text)]">{q.supplier_name}</div>
                     </td>
                     <td className="px-2 py-3">{q.title ?? '—'}</td>
                     <td className="px-2 py-3 text-center">{totals.countMap.get(q.id) ?? 0}</td>
@@ -269,14 +295,41 @@ export default function QuotesPage() {
                 {!quotes.length && !loading ? (
                   <tr>
                     <td colSpan={5} className="px-2 py-6">
-                      <div className="text-center text-sm text-gray-500 dark:text-slate-400">
+                      <div className="text-center text-sm text-[color:var(--muted)]">
                         Nenhum orcamento cadastrado.
                       </div>
                     </td>
                   </tr>
                 ) : null}
+                {!!quotes.length && !filteredQuotes.length && !loading ? (
+                  <tr>
+                    <td colSpan={5} className="px-2 py-6 text-center text-sm text-[color:var(--muted)]">
+                      Nenhum resultado para a busca.
+                    </td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
+          </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 md:hidden">
+            {filteredQuotes.map((q) => (
+              <div key={q.id} className="card p-3">
+                <div className="text-sm font-semibold text-[color:var(--text)]">{q.supplier_name}</div>
+                <div className="text-xs text-[color:var(--muted)]">{q.title ?? '—'}</div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] p-2">Itens: {totals.countMap.get(q.id) ?? 0}</div>
+                  <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] p-2">Total: {fmtBRL(totals.totalMap.get(q.id) ?? 0)}</div>
+                </div>
+                <button
+                  className={`btn-ghost mt-3 ${selectedQuoteId === q.id ? 'font-semibold' : ''}`}
+                  onClick={() => setSelectedQuoteId(q.id)}
+                >
+                  Visualizar
+                </button>
+              </div>
+            ))}
           </div>
         </SectionCard>
       </div>
@@ -291,7 +344,7 @@ export default function QuotesPage() {
               <div className="table-scroll mt-6">
                 <table className="table-base w-full text-left">
                   <thead>
-                    <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 dark:border-slate-800 dark:text-slate-400">
+                    <tr className="text-xs uppercase tracking-wide text-[color:var(--muted)]">
                       <th className="px-2 py-2 font-semibold">Item</th>
                       <th className="px-2 py-2 text-center font-semibold">Un</th>
                       <th className="px-2 py-2 text-right font-semibold">Qtd</th>
@@ -301,7 +354,7 @@ export default function QuotesPage() {
                   </thead>
                   <tbody>
                     {items.map((it) => (
-                      <tr key={it.id} className="border-b border-gray-100 hover:bg-gray-50 dark:border-slate-800 dark:hover:bg-slate-900">
+                      <tr key={it.id}>
                         <td className="px-2 py-3">{it.description}</td>
                         <td className="px-2 py-3 text-center">{it.unit}</td>
                         <td className="px-2 py-3 text-right">
@@ -316,7 +369,7 @@ export default function QuotesPage() {
                     {!items.length ? (
                       <tr>
                         <td colSpan={6} className="px-2 py-6">
-                          <div className="text-center text-sm text-gray-500 dark:text-slate-400">Nenhum item.</div>
+                          <div className="text-center text-sm text-[color:var(--muted)]">Nenhum item.</div>
                         </td>
                       </tr>
                     ) : null}
@@ -324,7 +377,7 @@ export default function QuotesPage() {
                 </table>
               </div>
 
-              <div className="mt-4 text-right text-sm font-semibold text-gray-800 dark:text-slate-200">
+              <div className="mt-4 text-right text-sm font-semibold text-[color:var(--text)]">
                 Total do orcamento: {fmtBRL(selectedTotal)}
               </div>
             </SectionCard>

@@ -10,7 +10,7 @@ export default function NewSalePage() {
       <NewSaleWizard />
 
       <SectionCard title="Nota operacional">
-        <div className="text-sm text-gray-600 dark:text-slate-300">
+        <div className="text-sm text-muted">
           No v1, cada item do carrinho é gravado como uma venda separada (compatibilidade com a RPC atual). Frete e desconto
           são rateados automaticamente. Quando migrarmos a RPC para itens múltiplos (sales + sale_items), isso vira uma venda
           única por pedido.

@@ -4,6 +4,7 @@ import { Search, Filter, Download, AlertTriangle, Package } from 'lucide-react';
 import PageHeader from '../ui/PageHeader';
 import SectionCard from '../ui/SectionCard';
 import StatusChip from '../ui/StatusChip';
+import DataToolbar from '../ui/DataToolbar';
 import { listProducts, listSalesSince } from '../lib/db';
 import type { Product } from '../lib/types';
 
@@ -26,6 +27,7 @@ export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [sales, setSales] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('todos');
   const [hideInactive, setHideInactive] = useState(true);
@@ -36,6 +38,7 @@ export default function InventoryPage() {
 
   async function load() {
     setLoading(true);
+    setError(null);
     try {
       const sinceISO = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       // Ensure we handle Promise.all failure gracefully or catch individually?
@@ -45,7 +48,7 @@ export default function InventoryPage() {
       setSales(s || []);
     } catch (err) {
       console.error("InventoryPage load error:", err);
-      // Optional: setError state to show message in UI
+      setError('Falha ao carregar estoque.');
     } finally {
       setLoading(false);
     }
@@ -133,100 +136,136 @@ export default function InventoryPage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <div className="card p-4">
-          <p className="text-xs uppercase text-gray-500 font-semibold">Valor em Estoque</p>
-          <p className="text-2xl font-bold text-gray-800 dark:text-gray-100 mt-1">
+          <p className="text-xs uppercase text-[color:var(--muted)] font-semibold">Valor em Estoque</p>
+          <p className="mt-1 text-2xl font-semibold text-[color:var(--text)]">
             {totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
           </p>
         </div>
         <div className="card p-4">
-          <p className="text-xs uppercase text-gray-500 font-semibold">Total de Itens</p>
-          <p className="text-2xl font-bold text-gray-800 dark:text-gray-100 mt-1">{filtered.reduce((acc, p) => acc + p.stock, 0)} un</p>
-        </div>
-        <div className="card relative overflow-hidden p-4">
-          <p className="text-xs uppercase text-red-500 font-semibold">Itens em Risco (15d)</p>
-          <p className="text-2xl font-bold text-red-600 mt-1">{riskCount}</p>
-          <AlertTriangle className="absolute right-[-10px] bottom-[-10px] text-red-100 w-20 h-20 pointer-events-none" />
+          <p className="text-xs uppercase text-[color:var(--muted)] font-semibold">Total de Itens</p>
+          <p className="mt-1 text-2xl font-semibold text-[color:var(--text)]">{filtered.reduce((acc, p) => acc + p.stock, 0)} un</p>
         </div>
         <div className="card p-4">
-          <p className="text-xs uppercase text-gray-500 font-semibold">Vendas (30d)</p>
-          <p className="text-2xl font-bold text-blue-600 mt-1">{filtered.reduce((acc, p) => acc + p.total30d, 0)} un</p>
+          <p className="text-xs uppercase text-[color:var(--danger)] font-semibold">Itens em Risco (15d)</p>
+          <p className="mt-1 text-2xl font-semibold text-[color:var(--danger)]">{riskCount}</p>
+          <AlertTriangle className="mt-2 h-4 w-4 text-[color:var(--danger)]" />
+        </div>
+        <div className="card p-4">
+          <p className="text-xs uppercase text-[color:var(--muted)] font-semibold">Vendas (30d)</p>
+          <p className="mt-1 text-2xl font-semibold text-[color:var(--primary)]">{filtered.reduce((acc, p) => acc + p.total30d, 0)} un</p>
         </div>
       </div>
 
       <SectionCard title="Consulta de Produtos">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              className="input w-full pl-10"
-              placeholder="Buscar por nome ou SKU..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-          <div className="flex gap-2">
+        <DataToolbar
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Buscar por nome ou SKU..."
+          filterAction={
             <select
-              className="input w-full sm:w-40"
+              className="input w-full sm:w-44"
               value={filterCategory}
               onChange={e => setFilterCategory(e.target.value)}
+              aria-label="Filtrar por categoria"
             >
-              <option value="todos">Todas Categorias</option>
+              <option value="todos">Todas categorias</option>
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
+          }
+          sortAction={
             <button
               onClick={() => setHideInactive(!hideInactive)}
-              className={`btn-ghost ${hideInactive ? 'bg-indigo-50 text-indigo-700 dark:bg-cyan-400/15 dark:text-cyan-200' : ''}`}
+              className="btn-ghost"
+              type="button"
             >
-              {hideInactive ? 'Ocultando Inativos' : 'Mostrando Inativos'}
+              <Filter className="h-4 w-4" />
+              {hideInactive ? 'Ocultando inativos' : 'Mostrando inativos'}
             </button>
+          }
+        />
+
+        {error ? <div className="mt-4 alert alert-error">{error}</div> : null}
+
+        {loading ? (
+          <div className="mt-4 rounded-lg border border-[color:var(--border)] p-4 text-sm text-[color:var(--muted)]">
+            Carregando inventário...
+          </div>
+        ) : null}
+
+        <div className="mt-4 hidden md:block">
+          <div className="table-scroll max-h-[55vh] sm:max-h-[60vh]">
+            <table className="table-base w-full text-left">
+              <thead>
+                <tr>
+                  <th className="p-3">Produto</th>
+                  <th className="p-3">Categoria</th>
+                  <th className="p-3 text-right">Custo</th>
+                  <th className="p-3 text-center">Estoque</th>
+                  <th className="p-3 text-center">Dias Restantes</th>
+                  <th className="p-3 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(p => (
+                  <tr key={p.id}>
+                    <td className="p-3">
+                      <div className="font-medium text-[color:var(--text)]">{p.name}</div>
+                      <div className="text-xs text-[color:var(--muted)]">{p.sku || '-'} • {p.variant}</div>
+                    </td>
+                    <td className="p-3 text-[color:var(--muted)]">{p.category}</td>
+                    <td className="p-3 text-right font-medium">R$ {p.cost.toFixed(2)}</td>
+                    <td className="p-3 text-center">
+                      <span className={`font-semibold ${p.stock < (p.min_stock || 5) ? 'text-[color:var(--danger)]' : 'text-[color:var(--text)]'}`}>
+                        {p.stock}
+                      </span>
+                    </td>
+                    <td className="p-3 text-center">
+                      {p.daysRemaining < 900 ? (
+                        <span className={`badge ${p.daysRemaining < 15 ? 'badge-danger' : 'badge-success'}`}>
+                          {p.daysRemaining.toFixed(0)} dias
+                        </span>
+                      ) : (
+                        <span className="table-muted">-</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-center">
+                      <StatusChip isActive={p.is_active} />
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && !loading ? (
+                  <tr><td colSpan={6} className="p-8 text-center text-[color:var(--muted)]">Nenhum produto encontrado.</td></tr>
+                ) : null}
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <div className="table-scroll max-h-[55vh] sm:max-h-[60vh]">
-          <table className="table-base w-full text-left">
-            <thead>
-              <tr>
-                <th className="p-3">Produto</th>
-                <th className="p-3">Categoria</th>
-                <th className="p-3 text-right">Custo</th>
-                <th className="p-3 text-center">Estoque</th>
-                <th className="p-3 text-center">Dias Restantes</th>
-                <th className="p-3 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-              {filtered.map(p => (
-                <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/30">
-                  <td className="p-3">
-                    <div className="font-medium text-gray-900 dark:text-gray-100">{p.name}</div>
-                    <div className="text-xs text-gray-400">{p.sku || '-'} • {p.variant}</div>
-                  </td>
-                  <td className="p-3 text-gray-600 dark:text-gray-400">{p.category}</td>
-                  <td className="p-3 text-right font-medium">R$ {p.cost.toFixed(2)}</td>
-                  <td className="p-3 text-center">
-                    <span className={`font-bold ${p.stock < (p.min_stock || 5) ? 'text-red-500' : 'text-gray-700 dark:text-gray-300'}`}>
-                      {p.stock}
-                    </span>
-                  </td>
-                  <td className="p-3 text-center">
-                    {p.daysRemaining < 900 ? (
-                      <span className={`badge ${p.daysRemaining < 15 ? 'badge-danger' : 'badge-success'}`}>
-                        {p.daysRemaining.toFixed(0)} dias
-                      </span>
-                    ) : (
-                      <span className="table-muted">-</span>
-                    )}
-                  </td>
-                  <td className="p-3 text-center">
-                    <StatusChip isActive={p.is_active} />
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && !loading && (
-                <tr><td colSpan={6} className="p-8 text-center text-gray-400">Nenhum produto encontrado.</td></tr>
-              )}
-            </tbody>
-          </table>
+        <div className="mt-4 grid grid-cols-1 gap-3 md:hidden">
+          {filtered.map((p) => (
+            <div key={p.id} className="card p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-medium text-[color:var(--text)]">{p.name}</div>
+                  <div className="text-xs text-[color:var(--muted)]">{p.sku || '-'} • {p.variant}</div>
+                </div>
+                <StatusChip isActive={p.is_active} />
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] p-2">Categoria: {p.category || '—'}</div>
+                <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] p-2">Custo: R$ {p.cost.toFixed(2)}</div>
+                <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] p-2">Estoque: {p.stock}</div>
+                <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] p-2">
+                  {p.daysRemaining < 900 ? `Dias: ${p.daysRemaining.toFixed(0)}` : 'Dias: —'}
+                </div>
+              </div>
+            </div>
+          ))}
+          {!filtered.length && !loading ? (
+            <div className="rounded-lg border border-[color:var(--border)] px-4 py-6 text-center text-sm text-[color:var(--muted)]">
+              Nenhum produto encontrado.
+            </div>
+          ) : null}
         </div>
       </SectionCard>
     </div>

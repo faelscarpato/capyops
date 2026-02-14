@@ -765,12 +765,16 @@ export type InternalEvent = {
   read_at: string | null;
 };
 
-export async function listInternalEvents(limit = 10): Promise<InternalEvent[]> {
-  const { data, error } = await supabase
-    .from('events')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit);
+type ListInternalEventsOptions = {
+  unreadOnly?: boolean;
+};
+
+export async function listInternalEvents(limit = 10, options: ListInternalEventsOptions = {}): Promise<InternalEvent[]> {
+  let query = supabase.from('events').select('*');
+  if (options.unreadOnly) {
+    query = query.is('read_at', null);
+  }
+  const { data, error } = await query.order('created_at', { ascending: false }).limit(limit);
   if (error) throw error;
   return (data as InternalEvent[]) ?? [];
 }
