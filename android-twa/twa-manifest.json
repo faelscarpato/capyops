@@ -1,5 +1,5 @@
 {
-  "packageId": "com.capyops.app",
+  "packageId": "dev.pages.capyops.twa",
   "host": "capyops.pages.dev",
   "name": "CapyOps",
   "launcherName": "CapyOps",
@@ -24,4 +24,3 @@
   "fallbackType": "customtabs",
   "generatorApp": "bubblewrap-cli"
 }
-
