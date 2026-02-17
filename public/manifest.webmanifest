@@ -6,8 +6,14 @@
   "start_url": "https://capyops.pages.dev/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["tabbed", "window-controls-overlay", "standalone"],
+  "orientation": "portrait-primary",
   "background_color": "#ffffff",
   "theme_color": "#13a4ec",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "finance"],
+  "iarc_rating_id": "e10a0a44-51f9-4804-a0ed-a2ff72115d1f",
   "icons": [
     {
       "src": "/icons/icon-48x48.png",
@@ -41,5 +47,96 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/dashboard-wide-1280x720.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Tela principal do CapyOps"
+    },
+    {
+      "src": "/screenshots/dashboard-narrow-720x1280.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Acesso rápido ao CapyOps"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Operações",
+      "short_name": "Operações",
+      "description": "Ir para o painel de operações",
+      "url": "/app/operacoes",
+      "icons": [
+        {
+          "src": "/icons/icon-96x96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Financeiro",
+      "short_name": "Financeiro",
+      "description": "Ir para o painel financeiro",
+      "url": "/app/financeiro",
+      "icons": [
+        {
+          "src": "/icons/icon-96x96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/app/catalogo",
+      "accept": {
+        "application/json": [".json"],
+        "text/csv": [".csv"]
+      }
+    }
+  ],
+  "launch_handler": {
+    "client_mode": ["focus-existing", "auto"]
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+capyops",
+      "url": "/app?handler=%s"
+    }
+  ],
+  "share_target": {
+    "action": "/app/operacoes",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://capyops.pages.dev/manifest.webmanifest"
+    }
+  ],
+  "prefer_related_applications": false,
+  "scope_extensions": [
+    {
+      "type": "origin",
+      "origin": "https://capyops.pages.dev"
+    }
+  ],
+  "widgets": [],
+  "edge_side_panel": {
+    "preferred_width": 420
+  },
+  "note_taking": {
+    "new_note_url": "/app/operacoes?venda=nova"
+  }
 }
