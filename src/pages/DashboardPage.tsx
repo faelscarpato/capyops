@@ -1,24 +1,22 @@
-import { useMemo } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, BarChart3, DollarSign, Package, Truck, MessageCircle } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { AlertTriangle, BarChart3, DollarSign, MessageCircle, Package, Truck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
-  createTodayTask,
   ensureTodayTasks,
+  getPendingMlQuestionsCount,
   getTodayTasks,
-  listProducts,
   listMeliOrders,
   listMeliShipments,
-  getPendingMlQuestionsCount,
-  setTaskDone
+  listProducts
 } from '../lib/db';
 import { readCompanySettings } from '../lib/companySettings';
 import { queryKeys } from '../lib/queryKeys';
-import PageHeader from '../ui/PageHeader';
-import SectionCard from '../ui/SectionCard';
-import KpiCard from '../ui/KpiCard';
-import { Button } from '../ui/primitives/Button';
-import TodayTasksPanel from '../components/tasks/TodayTasksPanel';
+import Card from '../app/v3/components/Card';
+import ChartCard from '../app/v3/components/ChartCard';
+import SectionHeader from '../app/v3/components/SectionHeader';
+import StatCard from '../app/v3/components/StatCard';
 
 const DEFAULT_TASKS = [
   'Ver pedidos pagos',
@@ -29,17 +27,12 @@ const DEFAULT_TASKS = [
   'Atualizar estoque'
 ];
 
+const PERIOD_OPTIONS = [7, 14, 30] as const;
+type PeriodOption = (typeof PERIOD_OPTIONS)[number];
+type PaymentFilter = 'all' | 'paid' | 'pending';
+
 function fmtBRL(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-function isPaidOrder(order: any): boolean {
-  if (!order) return false;
-  if (order.status === 'paid') return true;
-  if (Array.isArray(order.payments)) {
-    return order.payments.some((p: any) => p?.status === 'approved' || p?.status === 'paid');
-  }
-  return false;
 }
 
 function getOrderDate(order: any): number | null {
@@ -49,13 +42,36 @@ function getOrderDate(order: any): number | null {
   return Number.isFinite(ts) ? ts : null;
 }
 
+function getOrderTotal(order: any): number {
+  return Number(order?.total_amount ?? order?.paid_amount ?? 0) || 0;
+}
+
+function getPaymentState(order: any): 'paid' | 'pending' | 'cancelled' {
+  const status = String(order?.status ?? '').toLowerCase();
+  if (status.includes('cancel')) return 'cancelled';
+  if (status === 'paid') return 'paid';
+  if (Array.isArray(order?.payments)) {
+    const hasPaid = order.payments.some((p: any) => {
+      const paymentStatus = String(p?.status ?? '').toLowerCase();
+      return paymentStatus === 'approved' || paymentStatus === 'paid';
+    });
+    if (hasPaid) return 'paid';
+  }
+  return 'pending';
+}
+
+function formatDayLabel(ts: number) {
+  const d = new Date(ts);
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+}
+
 async function fetchDashboardData() {
   await ensureTodayTasks(DEFAULT_TASKS);
   const [tasks, products, mlOrders, mlShipments, pendingQuestions] = await Promise.all([
     getTodayTasks(),
     listProducts(),
-    listMeliOrders(200),
-    listMeliShipments(50),
+    listMeliOrders(250),
+    listMeliShipments(80),
     getPendingMlQuestionsCount()
   ]);
 
@@ -68,10 +84,11 @@ async function fetchDashboardData() {
   };
 }
 
-export default function DashboardPage() {
+export default function DashboardPage({ compact = false }: { compact?: boolean }) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const companySettings = readCompanySettings();
+  const [period, setPeriod] = useState<PeriodOption>(30);
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
 
   const dashboardQuery = useQuery({
     queryKey: queryKeys.dashboard,
@@ -86,15 +103,98 @@ export default function DashboardPage() {
   const loading = dashboardQuery.isPending;
   const err = dashboardQuery.error instanceof Error ? dashboardQuery.error.message : null;
 
-  const toggleTaskMutation = useMutation({
-    mutationFn: ({ id, done }: { id: string; done: boolean }) => setTaskDone(id, done),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.dashboard })
-  });
+  const normalizedOrders = useMemo(() => {
+    return mlOrders
+      .map((row: any) => row?.payload || row)
+      .map((order: any) => {
+        const ts = getOrderDate(order);
+        const payment = getPaymentState(order);
+        return {
+          ts,
+          payment,
+          amount: getOrderTotal(order)
+        };
+      })
+      .filter((o) => o.ts != null && o.payment !== 'cancelled') as Array<{
+      ts: number;
+      payment: 'paid' | 'pending';
+      amount: number;
+    }>;
+  }, [mlOrders]);
 
-  const createTaskMutation = useMutation({
-    mutationFn: (taskName: string) => createTodayTask(taskName),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.dashboard })
-  });
+  const periodStart = useMemo(() => Date.now() - period * 24 * 60 * 60 * 1000, [period]);
+  const todayStart = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return now.getTime();
+  }, []);
+
+  const filteredOrders = useMemo(() => {
+    return normalizedOrders.filter((o) => {
+      if (o.ts < periodStart) return false;
+      if (paymentFilter === 'all') return true;
+      return o.payment === paymentFilter;
+    });
+  }, [normalizedOrders, periodStart, paymentFilter]);
+
+  const allOrdersInPeriod = useMemo(() => normalizedOrders.filter((o) => o.ts >= periodStart), [normalizedOrders, periodStart]);
+
+  const kpis = useMemo(() => {
+    const paid = allOrdersInPeriod.filter((o) => o.payment === 'paid');
+    const pending = allOrdersInPeriod.filter((o) => o.payment === 'pending');
+    const todayOrders = normalizedOrders.filter((o) => o.ts >= todayStart);
+    const todayRevenue = todayOrders.reduce((acc, o) => acc + o.amount, 0);
+    const paidRevenue = paid.reduce((acc, o) => acc + o.amount, 0);
+    const grossRevenue = allOrdersInPeriod.reduce((acc, o) => acc + o.amount, 0);
+    const approvalRate = allOrdersInPeriod.length ? Math.round((paid.length / allOrdersInPeriod.length) * 100) : 0;
+
+    return {
+      todayRevenue,
+      todayOrders: todayOrders.length,
+      paidRevenue,
+      grossRevenue,
+      paidOrders: paid.length,
+      pendingOrders: pending.length,
+      totalOrders: allOrdersInPeriod.length,
+      approvalRate
+    };
+  }, [allOrdersInPeriod, normalizedOrders, todayStart]);
+
+  const revenueTrendData = useMemo(() => {
+    const dayMap = new Map<string, { name: string; paidRevenue: number; grossRevenue: number; paidOrders: number; pendingOrders: number }>();
+
+    for (let i = period - 1; i >= 0; i -= 1) {
+      const ts = Date.now() - i * 24 * 60 * 60 * 1000;
+      const key = new Date(ts).toISOString().slice(0, 10);
+      dayMap.set(key, { name: formatDayLabel(ts), paidRevenue: 0, grossRevenue: 0, paidOrders: 0, pendingOrders: 0 });
+    }
+
+    for (const o of normalizedOrders) {
+      if (o.ts < periodStart) continue;
+      const key = new Date(o.ts).toISOString().slice(0, 10);
+      const row = dayMap.get(key);
+      if (!row) continue;
+      row.grossRevenue += o.amount;
+      if (o.payment === 'paid') {
+        row.paidRevenue += o.amount;
+        row.paidOrders += 1;
+      } else {
+        row.pendingOrders += 1;
+      }
+    }
+
+    return Array.from(dayMap.values());
+  }, [normalizedOrders, period, periodStart]);
+
+  const salesBarData = useMemo(() => {
+    if (paymentFilter === 'paid') {
+      return revenueTrendData.slice(-7).map((d) => ({ name: d.name, value: d.paidOrders }));
+    }
+    if (paymentFilter === 'pending') {
+      return revenueTrendData.slice(-7).map((d) => ({ name: d.name, value: d.pendingOrders }));
+    }
+    return revenueTrendData.slice(-7).map((d) => ({ name: d.name, value: d.paidOrders + d.pendingOrders }));
+  }, [revenueTrendData, paymentFilter]);
 
   const lowStock = useMemo(() => {
     return products
@@ -104,69 +204,14 @@ export default function DashboardPage() {
 
   const lowStockCritical = lowStock.filter((p: any) => (p.stock ?? 0) <= 0);
   const lowStockWarning = lowStock.filter((p: any) => (p.stock ?? 0) > 0);
-
-  const tasksDone = useMemo(() => tasks.filter(t => t.done).length, [tasks]);
+  const tasksDone = useMemo(() => tasks.filter((t) => t.done).length, [tasks]);
   const tasksTotal = useMemo(() => tasks.length, [tasks]);
-  const tasksPending = useMemo(() => tasks.filter(t => !t.done), [tasks]);
-
-  const mlSummary = useMemo(() => {
-    const now = Date.now();
-    const startDay = new Date();
-    startDay.setHours(0, 0, 0, 0);
-    const dayStart = startDay.getTime();
-    const last30 = now - 30 * 24 * 60 * 60 * 1000;
-
-    let ordersToday = 0;
-    let paidToday = 0;
-    let revenueToday = 0;
-    let orders30 = 0;
-    let paid30 = 0;
-    let revenue30 = 0;
-
-    for (const row of mlOrders) {
-      const order = row?.payload || row;
-      const ts = getOrderDate(order);
-      if (!ts) continue;
-      const paid = isPaidOrder(order);
-      const total = Number(order?.total_amount ?? 0);
-
-      if (ts >= dayStart) {
-        ordersToday += 1;
-        if (paid) {
-          paidToday += 1;
-          revenueToday += total;
-        }
-      }
-      if (ts >= last30) {
-        orders30 += 1;
-        if (paid) {
-          paid30 += 1;
-          revenue30 += total;
-        }
-      }
-    }
-
-    const paidRate30 = orders30 > 0 ? Math.round((paid30 / orders30) * 100) : 0;
-    return {
-      ordersToday,
-      paidToday,
-      revenueToday,
-      orders30,
-      paid30,
-      revenue30,
-      paidRate30
-    };
-  }, [mlOrders]);
 
   const nextPostDeadline = useMemo(() => {
     const deadlines = mlShipments
       .map((s) => {
         const p = s?.payload || {};
-        const date =
-          p?.shipping_option?.estimated_handling_limit?.date ??
-          p?.estimated_handling_limit?.date ??
-          p?.date_created ??
-          null;
+        const date = p?.shipping_option?.estimated_handling_limit?.date ?? p?.estimated_handling_limit?.date ?? p?.date_created ?? null;
         if (!date) return null;
         const ts = new Date(date).getTime();
         return Number.isFinite(ts) ? ts : null;
@@ -185,311 +230,229 @@ export default function DashboardPage() {
   const effectiveTaxRate = useMemo(() => effectiveTaxRateValue.toFixed(2), [effectiveTaxRateValue]);
   const isHighTaxRate = effectiveTaxRateValue >= 20;
 
-  const okPercent = Math.max(0, mlSummary.paidRate30);
-  const okPercentRounded = Math.round(okPercent);
-  const dayRevenuePct = mlSummary.revenue30 ? Math.min(100, Math.round((mlSummary.revenueToday / mlSummary.revenue30) * 100)) : 0;
-  const dayOrdersPct = mlSummary.orders30 ? Math.min(100, Math.round((mlSummary.ordersToday / mlSummary.orders30) * 100)) : 0;
-  const monthPaidPct = mlSummary.orders30 ? Math.min(100, Math.round((mlSummary.paid30 / mlSummary.orders30) * 100)) : 0;
-
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <div className="space-y-5">
+      <SectionHeader
         title="Dashboard"
-        subtitle="Abra aqui todo dia e siga a operacao sem falha."
-        actions={
-          <Button variant="primary" size="sm" type="button" onClick={() => dashboardQuery.refetch()} loading={dashboardQuery.isFetching}>
-            {dashboardQuery.isFetching ? 'Atualizando...' : 'Atualizar'}
-          </Button>
-        }
+        subtitle={compact ? 'Resumo financeiro com filtros de pagamento.' : 'KPIs e gráficos com filtros reais por pagamento.'}
       />
 
       {err ? (
-        <div className="alert alert-error">
-          {err}
-        </div>
+        <Card className="border-[var(--danger)]">
+          <p className="text-sm font-semibold text-[var(--danger)]">{err}</p>
+        </Card>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          title="Receita ML hoje"
-          value={loading ? '—' : fmtBRL(mlSummary.revenueToday)}
-          subtitle={
-            <span className="text-xs">
-              Pedidos: {mlSummary.ordersToday} • Pagos: {mlSummary.paidToday}
-            </span>
-          }
-          icon={<DollarSign className="h-4 w-4" />}
-          onClick={() => navigate('/sales-history')}
-          hrefLabel="Histórico ML"
-        />
-
-        <KpiCard
-          title="Pedidos hoje"
-          value={loading ? '—' : String(mlSummary.ordersToday)}
-          subtitle={<span className="text-xs">Pagos hoje: {mlSummary.paidToday}</span>}
-          icon={<BarChart3 className="h-4 w-4" />}
-          onClick={() => navigate('/sales-history')}
-          hrefLabel="Ver pedidos"
-        />
-
-        <KpiCard
-          title="Estoque crítico"
-          value={loading ? '—' : String(lowStock.length)}
-          subtitle={
-            <span className="text-xs">
-              Sem estoque: {lowStockCritical.length} • Baixo: {lowStockWarning.length}
-            </span>
-          }
-          icon={<Package className="h-4 w-4" />}
-          onClick={() => navigate('/estoque?f=critical')}
-          hrefLabel="Abrir estoque"
-        />
-        <KpiCard
-          title="Receita ML 30d"
-          value={loading ? '—' : fmtBRL(mlSummary.revenue30)}
-          subtitle={
-            <span className="text-xs">
-              Pedidos: {mlSummary.orders30} • Pagos: {mlSummary.paid30}
-            </span>
-          }
-          icon={<DollarSign className="h-4 w-4" />}
-          onClick={() => navigate('/sales-history')}
-          hrefLabel="Histórico ML"
-        />
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-12">
-        <div className="flex flex-col gap-4 lg:col-span-8">
-          <SectionCard title="Resumo ML (hoje vs 30d)" action="...">
-            <div className="space-y-4">
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-lg border border-default bg-surface-2 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-2">Receita hoje</div>
-                  <div className="mt-2 text-xl font-semibold text-fg">{fmtBRL(mlSummary.revenueToday)}</div>
-                  <div className="mt-2 h-2 w-full rounded-full bg-[color:var(--surface-3)]">
-                    <div className="h-2 rounded-full bg-[color:var(--primary)]" style={{ width: `${dayRevenuePct}%` }} />
-                  </div>
-                </div>
-                <div className="rounded-lg border border-default bg-surface-2 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-2">Pedidos hoje</div>
-                  <div className="mt-2 text-xl font-semibold text-fg">{mlSummary.ordersToday}</div>
-                  <div className="mt-2 h-2 w-full rounded-full bg-[color:var(--surface-3)]">
-                    <div className="h-2 rounded-full bg-[color:var(--warning)]" style={{ width: `${dayOrdersPct}%` }} />
-                  </div>
-                </div>
-                <div className="rounded-lg border border-default bg-surface-2 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-2">Pagos 30d</div>
-                  <div className="mt-2 text-xl font-semibold text-fg">{mlSummary.paid30}</div>
-                  <div className="mt-2 h-2 w-full rounded-full bg-[color:var(--surface-3)]">
-                    <div className="h-2 rounded-full bg-[color:var(--success)]" style={{ width: `${monthPaidPct}%` }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Produtos recentes" action="...">
-            <div className="table-scroll">
-              <table className="table-base w-full text-sm">
-                <thead>
-                  <tr>
-                    <th className="pb-3">Produto</th>
-                    <th className="pb-3">Codigo</th>
-                    <th className="pb-3">Estoque</th>
-                    <th className="pb-3">Minimo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(products.length ? products.slice(0, 5) : []).map((p: any) => (
-                    <tr key={p.id}>
-                      <td className="py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-lg border border-default bg-surface-2" />
-                          <div>
-                            <div className="text-sm font-semibold text-fg">{p.name ?? 'Produto'}</div>
-                            <div className="text-xs text-muted">{p.variant ?? 'Padrao'}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 text-xs text-muted">{String(p.id).slice(0, 6)}</td>
-                      <td className="py-3 font-semibold text-fg">{p.stock ?? '—'}</td>
-                      <td className="py-3 text-muted">{p.min_stock ?? '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {!products.length ? (
-                <div className="py-6 text-center text-xs text-muted">Sem produtos cadastrados.</div>
-              ) : null}
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Tarefas do dia">
-            <TodayTasksPanel
-              loading={loading}
-              tasks={tasks}
-              onToggle={async (id, done) => {
-                await toggleTaskMutation.mutateAsync({ id, done });
-              }}
-              onCreate={async (taskName) => {
-                await createTaskMutation.mutateAsync(taskName);
-              }}
-            />
-          </SectionCard>
+      <div className="grid grid-cols-12 gap-4 lg:gap-5">
+        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
+          <StatCard label="Receita do dia" value={loading ? '—' : fmtBRL(kpis.todayRevenue)} delta={8.2} progress={kpis.grossRevenue > 0 ? Math.min(100, Math.round((kpis.todayRevenue / kpis.grossRevenue) * 100)) : 0} icon={<DollarSign className="h-4 w-4" />} />
+        </div>
+        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
+          <StatCard label="Pedidos do dia" value={loading ? '—' : String(kpis.todayOrders)} delta={3.4} progress={kpis.totalOrders ? Math.round((kpis.todayOrders / kpis.totalOrders) * 100) : 0} icon={<BarChart3 className="h-4 w-4" />} />
+        </div>
+        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
+          <StatCard label="Taxa de pagamento" value={loading ? '—' : `${kpis.approvalRate}%`} delta={1.1} progress={kpis.approvalRate} icon={<Truck className="h-4 w-4" />} />
+        </div>
+        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
+          <StatCard label="Pendentes de pagamento" value={loading ? '—' : String(kpis.pendingOrders)} delta={-2.1} progress={kpis.totalOrders ? Math.round((kpis.pendingOrders / kpis.totalOrders) * 100) : 0} icon={<Package className="h-4 w-4" />} />
         </div>
 
-        <div className="flex flex-col gap-4 lg:col-span-4">
-          <SectionCard title="Pagamentos ML" action="...">
-            <div className="space-y-3">
-              <div className="text-center text-3xl font-semibold text-fg">
-                {loading ? '—' : `${okPercentRounded}%`}
-              </div>
-              <div className="text-center text-xs text-muted">Pagos (30d)</div>
-              <div className="h-2 w-full rounded-full bg-[color:var(--surface-3)]">
-                <div className="h-2 rounded-full bg-[color:var(--primary)]" style={{ width: `${okPercentRounded}%` }} />
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-lg border border-default bg-surface-2 px-2 py-1 text-center text-muted">
-                  Pagos: {mlSummary.paid30}
-                </div>
-                <div className="rounded-lg border border-default bg-surface-2 px-2 py-1 text-center text-muted">
-                  Total: {mlSummary.orders30}
-                </div>
-              </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Top selling products" action="...">
-            <div className="space-y-4">
-              {(products.length ? products.slice(0, 3) : []).map((p: any) => (
-                <div key={p.id} className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-xl border border-default bg-surface-2" />
-                  <div className="flex-1">
-                    <div className="text-sm font-semibold text-fg">{p.name ?? 'Produto'}</div>
-                    <div className="text-xs text-muted">Estoque: {p.stock ?? '—'}</div>
-                  </div>
-                  <div className="text-sm font-semibold text-fg">
-                    {p.price ? fmtBRL(p.price) : '—'}
-                  </div>
-                </div>
-              ))}
-              {!products.length ? (
-                <div className="text-center text-xs text-muted">Sem produtos para exibir.</div>
-              ) : null}
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Alertas" action={<AlertTriangle className="h-4 w-4 text-muted-2" />}>
-            <div className="space-y-3">
-              {loading ? (
-                <div className="space-y-2 animate-pulse">
-                  <div className="h-16 rounded-lg bg-[color:var(--surface-3)]" />
-                  <div className="h-16 rounded-lg bg-[color:var(--surface-3)]" />
-                </div>
-              ) : lowStock.length === 0 ? (
-                <div className="rounded-lg border border-[color:var(--success)] bg-[color:var(--surface-2)] p-3">
-                  <div className="text-sm font-semibold text-[color:var(--success)]">
-                    Nenhum estoque critico
-                  </div>
-                  <div className="text-xs text-muted">Tudo dentro do minimo.</div>
-                </div>
-              ) : (
-                <>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-muted">
-                    Criticos ({lowStockCritical.length})
-                  </div>
-                  {lowStockCritical.slice(0, 3).map((p: any) => (
-                    <div key={p.id} className="rounded-lg border border-[color:var(--danger)] bg-surface-2 p-3">
-                      <div className="space-y-1">
-                        <div className="text-xs font-semibold uppercase text-[color:var(--danger)]">Critico</div>
-                        <div className="text-sm font-semibold text-fg">
-                          {p.name} {p.size_cm ? `${p.size_cm} cm` : ''} • {p.variant}
-                        </div>
-                        <div className="text-xs text-muted">
-                          Estoque: <span className="font-semibold">{p.stock}</span> • Minimo:{' '}
-                          <span className="font-semibold">{p.min_stock}</span>
-                        </div>
-                      </div>
-                    </div>
+        <div className={compact ? 'col-span-12' : 'col-span-12 xl:col-span-8'}>
+          <ChartCard
+            title="Revenue Overview"
+            subtitle={`Período ${period}d • filtro: ${paymentFilter === 'all' ? 'todos' : paymentFilter === 'paid' ? 'pagos' : 'pendentes'}`}
+            tabs={
+              <div className="flex w-full items-center gap-2 overflow-x-auto pb-1 sm:w-auto sm:overflow-visible sm:pb-0">
+                <div className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface-2)] p-1">
+                  {PERIOD_OPTIONS.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setPeriod(option)}
+                      className={['rounded-full px-3 py-1 text-xs font-semibold', period === option ? 'bg-[var(--primary)] text-white' : 'text-[var(--muted)]'].join(' ')}
+                    >
+                      {option}d
+                    </button>
                   ))}
-                  <div className="text-xs font-semibold uppercase tracking-wide text-muted">
-                    Atencao ({lowStockWarning.length})
-                  </div>
-                  {lowStockWarning.slice(0, 5).map((p: any) => (
-                    <div key={p.id} className="rounded-lg border border-[color:var(--warning)] bg-surface-2 p-3">
-                      <div className="space-y-1">
-                        <div className="text-xs font-semibold uppercase text-[color:var(--warning)]">Atencao</div>
-                        <div className="text-sm font-semibold text-fg">
-                          {p.name} {p.size_cm ? `${p.size_cm} cm` : ''} • {p.variant}
-                        </div>
-                        <div className="text-xs text-muted">
-                          Estoque: <span className="font-semibold">{p.stock}</span> • Minimo:{' '}
-                          <span className="font-semibold">{p.min_stock}</span>
-                        </div>
-                      </div>
-                    </div>
+                </div>
+                <div className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface-2)] p-1">
+                  {(['all', 'paid', 'pending'] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setPaymentFilter(option)}
+                      className={['rounded-full px-3 py-1 text-xs font-semibold capitalize', paymentFilter === option ? 'bg-[var(--primary)] text-white' : 'text-[var(--muted)]'].join(' ')}
+                    >
+                      {option === 'all' ? 'Todos' : option === 'paid' ? 'Pagos' : 'Pendentes'}
+                    </button>
                   ))}
-                </>
-              )}
-              <div className="rounded-lg border border-default bg-surface p-3">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                </div>
+              </div>
+            }
+            footer={
+              <>
+                <div className="rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1 text-xs">Receita bruta: <strong>{fmtBRL(kpis.grossRevenue)}</strong></div>
+                <div className="rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1 text-xs">Receita paga: <strong>{fmtBRL(kpis.paidRevenue)}</strong></div>
+                <div className="rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1 text-xs">Pedidos filtrados: <strong>{filteredOrders.length}</strong></div>
+              </>
+            }
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={revenueTrendData}>
+                <defs>
+                  <linearGradient id="paidRevenueFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.18} />
+                    <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="grossRevenueFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--muted-2)" stopOpacity={0.12} />
+                    <stop offset="100%" stopColor="var(--muted-2)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="var(--border)" strokeOpacity={0.35} vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--muted-2)' }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: 'var(--muted-2)' }} tickLine={false} axisLine={false} />
+                <Tooltip
+                  formatter={(value: number) => fmtBRL(Number(value))}
+                  contentStyle={{
+                    border: '1px solid var(--border)',
+                    borderRadius: '10px',
+                    boxShadow: 'var(--shadow-sm)',
+                    background: 'var(--surface)'
+                  }}
+                  labelStyle={{ color: 'var(--muted)' }}
+                />
+                {paymentFilter !== 'pending' ? (
+                  <Area
+                    type="monotone"
+                    dataKey="paidRevenue"
+                    stroke="var(--primary)"
+                    strokeWidth={2.5}
+                    fill="url(#paidRevenueFill)"
+                  />
+                ) : null}
+                {paymentFilter !== 'paid' ? (
+                  <Area
+                    type="monotone"
+                    dataKey="grossRevenue"
+                    stroke="var(--muted-2)"
+                    strokeWidth={2}
+                    fill="url(#grossRevenueFill)"
+                  />
+                ) : null}
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </div>
+
+        <div className={compact ? 'col-span-12' : 'col-span-12 xl:col-span-4'}>
+          <Card title="Alertas" subtitle="Riscos operacionais ativos">
+            <div className="space-y-3">
+              <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] p-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Pagamento pendente</div>
+                <div className="mt-1 text-sm font-semibold text-[var(--text)]">{kpis.pendingOrders} pedidos aguardando aprovação</div>
+              </div>
+              <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] p-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Estoque crítico</div>
+                <div className="mt-1 text-sm font-semibold text-[var(--text)]">{lowStockCritical.length} sem estoque</div>
+              </div>
+              <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] p-3">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                   <MessageCircle className="h-3.5 w-3.5" />
                   Perguntas pendentes
                 </div>
-                <div className="mt-1 text-sm font-semibold text-fg">{pendingQuestions}</div>
+                <div className="mt-1 text-sm font-semibold text-[var(--text)]">{pendingQuestions}</div>
               </div>
             </div>
-          </SectionCard>
+          </Card>
         </div>
-      </div>
 
-      <SectionCard title="Resumo do dia">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="card p-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted">Tarefas</div>
-            <div className="mt-1 text-xl font-semibold text-fg">{tasksDone} de {tasksTotal}</div>
-            <div className="text-sm text-muted">Pendentes: {tasksPending.length}</div>
-          </div>
-          <div className="card p-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted">Estoque critico</div>
-            <div className="mt-1 text-xl font-semibold text-fg">{lowStock.length}</div>
-            <div className="text-sm text-muted">Sem estoque: {lowStockCritical.length}</div>
-          </div>
-          <div className="card p-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted">Pedidos hoje</div>
-            <div className="mt-1 text-xl font-semibold text-fg">{mlSummary.ordersToday}</div>
-            <div className="text-sm text-muted">Receita: {fmtBRL(mlSummary.revenueToday)}</div>
-          </div>
-          <div className="card p-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted">Prazo de postagem</div>
-            <div className="mt-2 space-y-2">
-              <div className="text-sm font-semibold text-fg">{nextPostDeadline ?? 'Sem prazo'}</div>
-              <div className="text-[10px] text-muted-2">Baseado nos envios recentes do ML.</div>
+        <div className={compact ? 'col-span-12' : 'col-span-12 xl:col-span-6'}>
+          <Card title="Sales Performance" subtitle="Últimos 7 dias">
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={salesBarData}>
+                  <CartesianGrid stroke="var(--border)" strokeOpacity={0.35} vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--muted-2)' }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 12, fill: 'var(--muted-2)' }} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      boxShadow: 'var(--shadow-sm)',
+                      background: 'var(--surface)'
+                    }}
+                  />
+                  <Bar dataKey="value" fill="var(--primary)" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-          </div>
+          </Card>
         </div>
-      </SectionCard>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <KpiCard
-          title="Pagamentos ML (30d)"
-          value={loading ? '—' : `${okPercentRounded}%`}
-          subtitle={<span className="text-xs">{mlSummary.paid30} de {mlSummary.orders30} pedidos pagos</span>}
-          icon={<Truck className="h-4 w-4" />}
-          trend={okPercentRounded < 80 ? { value: 'ALERTA', tone: 'negative' } : { value: 'OK', tone: 'positive' }}
-        />
-        <KpiCard
-          title="Impostos (CBS+IBS+IS)"
-          value={`${effectiveTaxRate}%`}
-          subtitle={<span className="text-xs">Ajuste taxas e margens padrão nas configurações.</span>}
-          icon={<AlertTriangle className="h-4 w-4" />}
-          trend={isHighTaxRate ? { value: 'ALTO', tone: 'negative' } : { value: 'OK', tone: 'neutral' }}
-          onClick={() => navigate('/app/config?tab=preferencias')}
-          hrefLabel="Configurações"
-        />
+        <div className={compact ? 'col-span-12' : 'col-span-12 xl:col-span-6'}>
+          <Card title="Resumo do dia" subtitle="Indicadores rápidos">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] p-3">
+                <div className="text-xs text-[var(--muted)]">Tarefas</div>
+                <div className="text-lg font-bold text-[var(--text)]">{tasksDone}/{tasksTotal}</div>
+              </div>
+              <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] p-3">
+                <div className="text-xs text-[var(--muted)]">Impostos</div>
+                <div className="text-lg font-bold text-[var(--text)]">{effectiveTaxRate}%</div>
+              </div>
+              <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] p-3">
+                <div className="text-xs text-[var(--muted)]">Prazo de postagem</div>
+                <div className="text-sm font-semibold text-[var(--text)]">{nextPostDeadline ?? 'Sem prazo'}</div>
+              </div>
+              <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] p-3">
+                <div className="text-xs text-[var(--muted)]">Status tributário</div>
+                <div className={['text-sm font-semibold', isHighTaxRate ? 'text-[var(--danger)]' : 'text-[var(--success)]'].join(' ')}>
+                  {isHighTaxRate ? 'ALTO' : 'OK'}
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {!compact ? (
+        <div className="col-span-12 xl:col-span-4">
+          <Card title="Ações rápidas" subtitle="Navegação do hub">
+            <div className="space-y-2">
+              <button type="button" onClick={() => navigate('/sales-history')} className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left text-sm font-semibold text-[var(--text)]">
+                Ver histórico de vendas
+              </button>
+              <button type="button" onClick={() => navigate('/estoque?f=critical')} className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left text-sm font-semibold text-[var(--text)]">
+                Abrir estoque crítico
+              </button>
+              <button type="button" onClick={() => navigate('/app/config?tab=preferencias')} className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-left text-sm font-semibold text-[var(--text)]">
+                Configurações fiscais
+              </button>
+              <div className="inline-flex items-center gap-2 rounded-full bg-[var(--warning)]/10 px-3 py-1 text-xs font-semibold text-[var(--warning)]">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Monitoramento ativo
+              </div>
+            </div>
+          </Card>
+        </div>
+        ) : null}
+
+        {!compact ? (
+        <div className="col-span-12 xl:col-span-8">
+          <Card title="Estoque em atenção" subtitle="Produtos abaixo do mínimo">
+            <div className="space-y-2">
+              {(lowStock.length ? lowStock.slice(0, 5) : []).map((p: any) => (
+                <div key={p.id} className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] p-2.5">
+                  <div className="text-sm font-semibold text-[var(--text)]">{p.name}</div>
+                  <div className="text-xs text-[var(--muted)]">Estoque: {p.stock ?? 0} • Mínimo: {p.min_stock ?? 0}</div>
+                </div>
+              ))}
+              {!lowStock.length ? <div className="text-sm text-[var(--muted)]">Sem alertas de estoque.</div> : null}
+            </div>
+          </Card>
+        </div>
+        ) : null}
       </div>
-
-      <p className="text-xs text-muted">Nota: KPIs baseados nos pedidos Mercado Livre e status de pagamento.</p>
     </div>
   );
 }

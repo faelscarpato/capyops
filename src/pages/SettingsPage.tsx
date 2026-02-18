@@ -5,6 +5,8 @@ import SectionCard from '../ui/SectionCard';
 import { inviteWorkspaceMember } from '../lib/workspaceApi';
 import { listWorkspaceMembers, type WorkspaceMember } from '../lib/db';
 import InstallOptionsPanel from '../components/InstallOptionsPanel';
+import { useAuth } from '../lib/auth';
+import { supabase } from '../lib/supabase';
 
 function toDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -16,6 +18,7 @@ function toDataUrl(file: File): Promise<string> {
 }
 
 export default function SettingsPage() {
+  const { user } = useAuth();
   const [settings, setSettings] = useState(() => readCompanySettings());
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -24,6 +27,10 @@ export default function SettingsPage() {
   const [inviteRole, setInviteRole] = useState('member');
   const [inviteMsg, setInviteMsg] = useState<string | null>(null);
   const [inviting, setInviting] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState('');
+  const [profileMsg, setProfileMsg] = useState<string | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
 
   const logoPreview = useMemo(() => settings.logo_data_url || settings.logo_url, [settings.logo_data_url, settings.logo_url]);
 
@@ -56,6 +63,11 @@ export default function SettingsPage() {
       alive = false;
     };
   }, []);
+
+  useEffect(() => {
+    setProfileName(String(user?.user_metadata?.full_name ?? ''));
+    setProfileAvatarUrl(String(user?.user_metadata?.avatar_url ?? ''));
+  }, [user?.id, user?.user_metadata]);
 
   async function handleLogoUpload(file?: File | null) {
     if (!file) return;
@@ -94,6 +106,49 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleProfileAvatarUpload(file?: File | null) {
+    if (!file) return;
+    setSavingProfile(true);
+    try {
+      const dataUrl = await toDataUrl(file);
+      setProfileAvatarUrl(dataUrl);
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          ...(user?.user_metadata ?? {}),
+          full_name: profileName.trim(),
+          avatar_url: dataUrl
+        }
+      });
+      if (error) throw error;
+      setProfileMsg('Avatar atualizado.');
+      setTimeout(() => setProfileMsg(null), 2000);
+    } catch (e: any) {
+      setProfileMsg(e?.message ?? 'Falha ao atualizar avatar.');
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  async function handleSaveProfile() {
+    setSavingProfile(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          ...(user?.user_metadata ?? {}),
+          full_name: profileName.trim(),
+          avatar_url: profileAvatarUrl.trim()
+        }
+      });
+      if (error) throw error;
+      setProfileMsg('Perfil atualizado.');
+      setTimeout(() => setProfileMsg(null), 2000);
+    } catch (e: any) {
+      setProfileMsg(e?.message ?? 'Falha ao atualizar perfil.');
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -114,6 +169,54 @@ export default function SettingsPage() {
 
       <SectionCard title="Instalacao do aplicativo">
         <InstallOptionsPanel />
+      </SectionCard>
+
+      <SectionCard title="Perfil do usuario">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div>
+            <div className="label mb-1">Nome de exibicao</div>
+            <input
+              className="input"
+              value={profileName}
+              onChange={(e) => setProfileName(e.target.value)}
+              placeholder="Seu nome"
+            />
+          </div>
+          <div>
+            <div className="label mb-1">URL do avatar</div>
+            <input
+              className="input"
+              value={profileAvatarUrl}
+              onChange={(e) => setProfileAvatarUrl(e.target.value)}
+              placeholder="https://..."
+            />
+          </div>
+          <div>
+            <div className="label mb-1">Upload de avatar</div>
+            <input
+              type="file"
+              accept="image/*"
+              className="input"
+              onChange={(e) => handleProfileAvatarUpload(e.target.files?.[0])}
+              disabled={savingProfile}
+            />
+          </div>
+        </div>
+        <div className="mt-3 flex items-center gap-3">
+          <div className="card flex h-12 w-12 items-center justify-center overflow-hidden rounded-full">
+            {profileAvatarUrl ? (
+              <img src={profileAvatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-xs text-gray-500">
+                {(profileName || user?.email || 'U').slice(0, 2).toUpperCase()}
+              </span>
+            )}
+          </div>
+          <button className="btn-primary" onClick={handleSaveProfile} disabled={savingProfile}>
+            {savingProfile ? 'Salvando...' : 'Salvar perfil'}
+          </button>
+          {profileMsg ? <div className="text-xs text-gray-500 dark:text-slate-400">{profileMsg}</div> : null}
+        </div>
       </SectionCard>
 
       <SectionCard title="Identidade da loja">

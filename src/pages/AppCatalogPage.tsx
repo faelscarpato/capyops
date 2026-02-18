@@ -1,6 +1,5 @@
 import { TaskTabs, useTaskTabs } from '../ui/TaskTabs';
 import { useNavigate } from 'react-router-dom';
-import PageHeader from '../ui/PageHeader';
 import { Button } from '../ui/primitives/Button';
 import RegistrationsPage from './RegistrationsPage';
 import InventoryPage from './InventoryPage';
@@ -8,6 +7,7 @@ import SuppliesPage from './SuppliesPage';
 import PackingKitsPage from './PackingKitsPage';
 import ListingsPage from './ListingsPage';
 import PredictiveStockPage from './PredictiveStockPage';
+import SectionHeader from '../app/v3/components/SectionHeader';
 
 const TABS = [
   { id: 'produtos', label: 'Produtos' },
@@ -23,8 +23,8 @@ export default function AppCatalogPage() {
   const { activeTab, setActiveTab } = useTaskTabs(TABS, 'produtos', 'catalogTab');
 
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <div className="space-y-4">
+      <SectionHeader
         title="Catálogo"
         subtitle="Gestão de produtos, estoque e ativos de operação."
         actions={

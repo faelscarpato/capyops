@@ -1,6 +1,5 @@
 import { TaskTabs, useTaskTabs } from '../ui/TaskTabs';
 import { useSearchParams } from 'react-router-dom';
-import PageHeader from '../ui/PageHeader';
 import { Button } from '../ui/primitives/Button';
 import SalesHistoryPage from './SalesHistoryPage';
 import OperationsShipmentsPanel from './OperationsShipmentsPanel';
@@ -13,6 +12,7 @@ import QuotesPage from './QuotesPage';
 import NewSalePage from './NewSalePage';
 import CompetitorTrackingPage from './CompetitorTrackingPage';
 import MarketingPlanPage from './MarketingPlanPage';
+import SectionHeader from '../app/v3/components/SectionHeader';
 
 const TABS = [
   { id: 'pedidos', label: 'Pedidos' },
@@ -47,10 +47,10 @@ export default function AppOperationsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <div className="space-y-4">
+      <SectionHeader
         title="Operações"
-        subtitle="Execução diária de pedidos, alertas e atendimento."
+        subtitle="Execução diária de pedidos, alertas, atendimento e expedição."
         actions={
           showNewSale ? (
             <Button type="button" variant="ghost" onClick={closeNewSale}>
@@ -64,7 +64,9 @@ export default function AppOperationsPage() {
         }
       />
 
-      {!showNewSale ? <TaskTabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} ariaLabel="Operacoes" /> : null}
+      {!showNewSale ? (
+        <TaskTabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} ariaLabel="Operacoes" />
+      ) : null}
 
       {showNewSale ? <NewSalePage /> : null}
       {!showNewSale && activeTab === 'pedidos' && <SalesHistoryPage />}

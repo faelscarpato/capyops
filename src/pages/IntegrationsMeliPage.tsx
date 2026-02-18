@@ -97,7 +97,7 @@ export default function IntegrationsMeliPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Integração Mercado Livre"
         subtitle="Conecte sua conta ML para receber pedidos, perguntas e notificações."
@@ -154,7 +154,29 @@ export default function IntegrationsMeliPage() {
       </SectionCard>
 
       <SectionCard title="Envios recentes">
-        <div className="table-scroll">
+        <div className="space-y-2 md:hidden">
+          {shipments.map((s) => {
+            const p = s.payload || {};
+            const deadline =
+              p?.shipping_option?.estimated_handling_limit?.date ??
+              p?.estimated_handling_limit?.date ??
+              p?.date_created ??
+              null;
+            return (
+              <div key={`mobile-${s.id}`} className="rounded-lg border border-default bg-surface px-3 py-2">
+                <div className="text-xs text-muted">ID envio</div>
+                <div className="text-sm font-semibold text-fg">{s.ml_shipment_id}</div>
+                <div className="mt-1 text-xs text-muted">Status: {s.status || '—'}</div>
+                <div className="text-xs text-muted">Prazo: {deadline ? new Date(deadline).toLocaleString('pt-BR') : '—'}</div>
+                <button className="btn-ghost mt-2 text-xs" onClick={() => meliDownloadLabel(s.ml_shipment_id)}>
+                  Baixar etiqueta
+                </button>
+              </div>
+            );
+          })}
+          {!shipments.length ? <div className="py-2 text-center text-sm text-gray-500">Nenhum envio encontrado.</div> : null}
+        </div>
+        <div className="table-scroll hidden md:block">
           <table className="table-base w-full text-left text-xs">
             <thead>
               <tr>

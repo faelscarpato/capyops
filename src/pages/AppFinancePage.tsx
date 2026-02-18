@@ -1,11 +1,11 @@
 import { TaskTabs, useTaskTabs } from '../ui/TaskTabs';
 import { useNavigate } from 'react-router-dom';
-import PageHeader from '../ui/PageHeader';
 import { Button } from '../ui/primitives/Button';
-import DashboardPage from './DashboardPage';
 import ExpensesPage from './ExpensesPage';
 import PriceCalculatorPage from './PriceCalculatorPage';
 import ReportsPage from './ReportsPage';
+import SectionHeader from '../app/v3/components/SectionHeader';
+import FinanceOverviewPage from './FinanceOverviewPage';
 
 const TABS = [
   { id: 'resumo', label: 'Resumo' },
@@ -19,8 +19,8 @@ export default function AppFinancePage() {
   const { activeTab, setActiveTab } = useTaskTabs(TABS, 'resumo');
 
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <div className="space-y-4">
+      <SectionHeader
         title="Financeiro"
         subtitle="Acompanhe margem, despesas e relatórios em tempo real."
         actions={
@@ -32,7 +32,7 @@ export default function AppFinancePage() {
 
       <TaskTabs tabs={TABS} activeTab={activeTab} onChange={setActiveTab} ariaLabel="Financeiro" />
 
-      {activeTab === 'resumo' && <DashboardPage />}
+      {activeTab === 'resumo' && <FinanceOverviewPage />}
       {activeTab === 'custos' && <ExpensesPage />}
       {activeTab === 'margem' && <PriceCalculatorPage />}
       {activeTab === 'relatorios' && <ReportsPage />}

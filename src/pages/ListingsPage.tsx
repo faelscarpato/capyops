@@ -271,41 +271,78 @@ export default function ListingsPage() {
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-3 md:hidden">
-          {loading ? (
-            <div className="rounded-lg border border-[color:var(--border)] px-4 py-6 text-center text-sm text-[color:var(--muted)]">
-              Carregando análise...
-            </div>
-          ) : null}
-
-          {!loading && !filtered.length ? (
-            <div className="rounded-lg border border-[color:var(--border)] px-4 py-6 text-center text-sm text-[color:var(--muted)]">
-              Nenhum anúncio para monitorar.
-            </div>
-          ) : null}
-
-          {!loading ? filtered.map((it) => {
-            const days = daysBetween(it.listed_at);
-            const okImgs = (it.images_count ?? 0) >= 6;
-            const okDesc = it.has_full_description === true;
-            return (
-              <div key={it.id} className="card p-3">
-                <div className="font-medium text-[color:var(--text)]">{it.title}</div>
-                <div className="text-xs text-[color:var(--muted)]">{it.ml_listing_id}</div>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                  <span className={`badge ${okImgs ? 'badge-success' : 'badge-danger'}`}>Imagens: {it.images_count ?? 0}</span>
-                  <span className={`badge ${okDesc ? 'badge-success' : 'badge-warning'}`}>{okDesc ? 'Descrição OK' : 'Descrição pendente'}</span>
-                  <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] p-2">Dias no ar: {days == null ? '—' : `${days}d`}</div>
-                  <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] p-2">Preço: {it.price != null ? `R$ ${Number(it.price).toFixed(2)}` : '—'}</div>
-                </div>
-                <div className="mt-3">
-                  <button className="btn-ghost text-xs" onClick={() => openEdit(it)}>
-                    <Edit2 className="h-3 w-3" /> Editar
-                  </button>
-                </div>
-              </div>
-            );
-          }) : null}
+        <div className="mt-4 md:hidden">
+          <div className="table-scroll">
+            <table className="table-base min-w-[860px] text-left">
+              <thead>
+                <tr>
+                  <th className="p-3">Anúncio</th>
+                  <th className="p-3 text-center">Imagens</th>
+                  <th className="p-3 text-center">Descrição</th>
+                  <th className="p-3 text-center">Preço</th>
+                  <th className="p-3 text-center">Visitas</th>
+                  <th className="p-3 text-center">Vendas</th>
+                  <th className="p-3 text-center">Status</th>
+                  <th className="p-3 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-sm text-[color:var(--muted)]">
+                      Carregando análise...
+                    </td>
+                  </tr>
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-sm text-[color:var(--muted)]">
+                      Nenhum anúncio para monitorar.
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((it) => {
+                    const okImgs = (it.images_count ?? 0) >= 6;
+                    const okDesc = it.has_full_description === true;
+                    return (
+                      <tr key={`m-${it.id}`}>
+                        <td className="p-3">
+                          <div className="font-medium text-[color:var(--text)]">{it.title}</div>
+                          <div className="text-xs text-[color:var(--muted)]">{it.ml_listing_id}</div>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className={`badge ${okImgs ? 'badge-success' : 'badge-danger'}`}>{it.images_count ?? 0}</span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className={`badge ${okDesc ? 'badge-success' : 'badge-warning'}`}>
+                            {okDesc ? 'Completa' : 'Pendente'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className="text-sm font-medium text-[color:var(--muted)]">
+                            {it.price != null ? `R$ ${Number(it.price).toFixed(2)}` : '—'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className="text-sm font-medium text-[color:var(--muted)]">{it.visits ?? '—'}</span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className="text-sm font-medium text-[color:var(--muted)]">{it.sold_quantity ?? 0}</span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className="badge badge-neutral">{it.status || 'Ativo'}</span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <button className="btn-ghost text-xs" onClick={() => openEdit(it)}>
+                            <Edit2 className="h-3 w-3" /> Editar
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </SectionCard>
 

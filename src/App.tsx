@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth';
-import AppLayout from './ui/AppLayout';
 import LoginPage from './pages/LoginPage';
 import IntegrationsMeliCallbackPage from './pages/IntegrationsMeliCallbackPage';
 import OpeningSplash from './components/OpeningSplash';
@@ -10,6 +9,7 @@ import AppOperationsPage from './pages/AppOperationsPage';
 import AppCatalogPage from './pages/AppCatalogPage';
 import AppFinancePage from './pages/AppFinancePage';
 import AppConfigPage from './pages/AppConfigPage';
+import AppShellV3 from './app/v3/shell/AppShellV3';
 
 function Protected({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -41,23 +41,34 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
-          path="/"
+          path="/dashboard"
           element={
             <Protected>
-              <AppLayout />
+              <Navigate to="/app/dashboard" replace />
+            </Protected>
+          }
+        />
+        <Route
+          path="/app"
+          element={
+            <Protected>
+              <AppShellV3 />
             </Protected>
           }
         >
-          <Route index element={<Navigate to="/app" replace />} />
-          <Route path="app" element={<AppOverviewPage />} />
-          <Route path="app/operacoes" element={<AppOperationsPage />} />
-          <Route path="app/catalogo" element={<AppCatalogPage />} />
-          <Route path="app/financeiro" element={<AppFinancePage />} />
-          <Route path="app/config" element={<AppConfigPage />} />
-
-          <Route
-            path="estoque"
-            element={
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<AppOverviewPage />} />
+          <Route path="operacoes" element={<AppOperationsPage />} />
+          <Route path="catalogo" element={<AppCatalogPage />} />
+          <Route path="financeiro" element={<AppFinancePage />} />
+          <Route path="config" element={<AppConfigPage />} />
+        </Route>
+        <Route path="/v3/*" element={<Navigate to="/app/dashboard" replace />} />
+        <Route path="/" element={<Protected><Navigate to="/app/dashboard" replace /></Protected>} />
+        <Route
+          path="/estoque"
+          element={
+            <Protected>
               <RedirectWithSearch
                 to="/app/catalogo"
                 mapSearch={(params) => {
@@ -66,12 +77,14 @@ export default function App() {
                   return next;
                 }}
               />
-            }
-          />
-          <Route path="insumos" element={<Navigate to="/app/catalogo?catalogTab=insumos" replace />} />
-          <Route
-            path="cadastros"
-            element={
+            </Protected>
+          }
+        />
+        <Route path="/insumos" element={<Protected><Navigate to="/app/catalogo?catalogTab=insumos" replace /></Protected>} />
+        <Route
+          path="/cadastros"
+          element={
+            <Protected>
               <RedirectWithSearch
                 to="/app/catalogo"
                 mapSearch={(params) => {
@@ -85,25 +98,30 @@ export default function App() {
                   return next;
                 }}
               />
-            }
-          />
-          <Route path="despesas" element={<Navigate to="/app/financeiro?tab=custos" replace />} />
-          <Route path="kits" element={<Navigate to="/app/catalogo?catalogTab=kits" replace />} />
-          <Route path="orcamentos" element={<Navigate to="/app/operacoes?tab=orcamentos" replace />} />
-          <Route path="nova-venda" element={<Navigate to="/app/operacoes?venda=nova" replace />} />
-
-          <Route path="relatorios" element={<Navigate to="/app/financeiro?tab=relatorios" replace />} />
-          <Route path="anuncios" element={<Navigate to="/app/catalogo?catalogTab=anuncios" replace />} />
-          <Route path="sales-history" element={<Navigate to="/app/operacoes?tab=pedidos" replace />} />
-          <Route path="precificador" element={<Navigate to="/app/financeiro?tab=margem" replace />} />
-          <Route path="perguntas" element={<Navigate to="/app/operacoes?tab=perguntas" replace />} />
-          <Route path="competidores" element={<Navigate to="/app/operacoes?tab=competidores" replace />} />
-
-          <Route path="configuracoes" element={<Navigate to="/app/config?tab=preferencias" replace />} />
-          <Route path="plano-marketing" element={<Navigate to="/app/operacoes?tab=plano-mkt" replace />} />
-          <Route path="integracoes/mercado-livre" element={<Navigate to="/app/config?tab=integracoes" replace />} />
-          <Route path="integracoes/mercado-livre/callback" element={<IntegrationsMeliCallbackPage />} />
-        </Route>
+            </Protected>
+          }
+        />
+        <Route path="/despesas" element={<Protected><Navigate to="/app/financeiro?tab=custos" replace /></Protected>} />
+        <Route path="/kits" element={<Protected><Navigate to="/app/catalogo?catalogTab=kits" replace /></Protected>} />
+        <Route path="/orcamentos" element={<Protected><Navigate to="/app/operacoes?tab=orcamentos" replace /></Protected>} />
+        <Route path="/nova-venda" element={<Protected><Navigate to="/app/operacoes?venda=nova" replace /></Protected>} />
+        <Route path="/relatorios" element={<Protected><Navigate to="/app/financeiro?tab=relatorios" replace /></Protected>} />
+        <Route path="/anuncios" element={<Protected><Navigate to="/app/catalogo?catalogTab=anuncios" replace /></Protected>} />
+        <Route path="/sales-history" element={<Protected><Navigate to="/app/operacoes?tab=pedidos" replace /></Protected>} />
+        <Route path="/precificador" element={<Protected><Navigate to="/app/financeiro?tab=margem" replace /></Protected>} />
+        <Route path="/perguntas" element={<Protected><Navigate to="/app/operacoes?tab=perguntas" replace /></Protected>} />
+        <Route path="/competidores" element={<Protected><Navigate to="/app/operacoes?tab=competidores" replace /></Protected>} />
+        <Route path="/configuracoes" element={<Protected><Navigate to="/app/config?tab=preferencias" replace /></Protected>} />
+        <Route path="/plano-marketing" element={<Protected><Navigate to="/app/operacoes?tab=plano-mkt" replace /></Protected>} />
+        <Route path="/integracoes/mercado-livre" element={<Protected><Navigate to="/app/config?tab=integracoes" replace /></Protected>} />
+        <Route
+          path="/integracoes/mercado-livre/callback"
+          element={
+            <Protected>
+              <IntegrationsMeliCallbackPage />
+            </Protected>
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

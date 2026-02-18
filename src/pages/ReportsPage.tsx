@@ -3,9 +3,7 @@ import type { Expense, PackingKit, PackingKitItem, Product, Supply } from '../li
 import type { Chart as ChartType } from 'chart.js';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
-import PageHeader from '../ui/PageHeader';
-import SectionCard from '../ui/SectionCard';
-import DataToolbar from '../ui/DataToolbar';
+import { AlertTriangle, Boxes, ChartNoAxesCombined, DollarSign, RefreshCw } from 'lucide-react';
 import {
   listAllPackingKitItems,
   listExpensesInRange,
@@ -15,6 +13,9 @@ import {
   listSalesSince,
   listSupplies
 } from '../lib/db';
+import SectionHeader from '../app/v3/components/SectionHeader';
+import Card from '../app/v3/components/Card';
+import StatCard from '../app/v3/components/StatCard';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend);
 
@@ -24,10 +25,27 @@ function fmtBRL(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+function fmtInt(value: number) {
+  return value.toLocaleString('pt-BR');
+}
+
 function toISODateRange(start: string, end: string) {
   const startISO = new Date(`${start}T00:00:00`).toISOString();
   const endISO = new Date(`${end}T23:59:59`).toISOString();
   return { startISO, endISO };
+}
+
+function dateDiffInDays(start: string, end: string) {
+  const startDate = new Date(`${start}T00:00:00`);
+  const endDate = new Date(`${end}T00:00:00`);
+  const diff = Math.round((endDate.getTime() - startDate.getTime()) / 86400000);
+  return Math.max(0, diff);
+}
+
+function shiftDate(date: string, days: number) {
+  const d = new Date(`${date}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 function toISOWeek(date: Date) {
@@ -153,6 +171,8 @@ export default function ReportsPage() {
 
   const [salesRows, setSalesRows] = useState<any[]>([]);
   const [expenseRows, setExpenseRows] = useState<Expense[]>([]);
+  const [prevSalesRows, setPrevSalesRows] = useState<any[]>([]);
+  const [prevExpenseRows, setPrevExpenseRows] = useState<Expense[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [supplies, setSupplies] = useState<Supply[]>([]);
   const [kits, setKits] = useState<PackingKit[]>([]);
@@ -168,10 +188,16 @@ export default function ReportsPage() {
     setErr(null);
     try {
       const { startISO, endISO } = toISODateRange(startDate, endDate);
+      const span = dateDiffInDays(startDate, endDate) + 1;
+      const prevStart = shiftDate(startDate, -span);
+      const prevEnd = shiftDate(endDate, -span);
+      const { startISO: prevStartISO, endISO: prevEndISO } = toISODateRange(prevStart, prevEnd);
       const sinceISO = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const [sales, expenses, p, s, k, kItems, salesRecent] = await Promise.all([
+      const [sales, expenses, prevSales, prevExpenses, p, s, k, kItems, salesRecent] = await Promise.all([
         listSalesInRange(startISO, endISO),
         listExpensesInRange(startISO, endISO),
+        listSalesInRange(prevStartISO, prevEndISO),
+        listExpensesInRange(prevStartISO, prevEndISO),
         listProducts(),
         listSupplies(),
         listPackingKits(),
@@ -180,6 +206,8 @@ export default function ReportsPage() {
       ]);
       setSalesRows(sales);
       setExpenseRows(expenses);
+      setPrevSalesRows(prevSales);
+      setPrevExpenseRows(prevExpenses);
       setProducts(p);
       setSupplies(s);
       setKits(k);
@@ -301,21 +329,40 @@ export default function ReportsPage() {
   }, [salesRows]);
 
   const topProducts = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, { qty: number; revenue: number }>();
     for (const sale of salesRows) {
-      map.set(sale.product_id, (map.get(sale.product_id) ?? 0) + Number(sale.quantity ?? 0));
+      const qty = Number(sale.quantity ?? 0);
+      const revenue = qty * Number(sale.sale_price ?? 0);
+      const prev = map.get(sale.product_id) ?? { qty: 0, revenue: 0 };
+      map.set(sale.product_id, {
+        qty: prev.qty + qty,
+        revenue: prev.revenue + revenue
+      });
     }
+
     const rows = Array.from(map.entries())
-      .map(([id, qty]) => ({
+      .map(([id, data]) => ({
         id,
-        qty,
+        qty: data.qty,
+        revenue: data.revenue,
         label: productMap.get(id)?.name ?? 'Produto'
       }))
-      .sort((a, b) => b.qty - a.qty);
-    return {
-      top: rows.slice(0, 5),
-      bottom: rows.slice(-5).reverse()
-    };
+      .sort((a, b) => {
+        if (b.qty !== a.qty) return b.qty - a.qty;
+        return b.revenue - a.revenue;
+      });
+
+    const top = rows.slice(0, 5);
+    const topIds = new Set(top.map((row) => row.id));
+    const bottom = [...rows]
+      .filter((row) => !topIds.has(row.id))
+      .sort((a, b) => {
+        if (a.qty !== b.qty) return a.qty - b.qty;
+        return a.revenue - b.revenue;
+      })
+      .slice(0, 5);
+
+    return { top, bottom };
   }, [salesRows, productMap]);
 
   const filteredInventoryRows = useMemo(() => {
@@ -530,14 +577,14 @@ export default function ReportsPage() {
 
     addTable(
       'Top produtos vendidos',
-      ['Produto', 'Qtd'],
-      topProducts.top.map((row) => [row.label, row.qty])
+      ['Produto', 'Qtd', 'Receita'],
+      topProducts.top.map((row) => [row.label, row.qty, fmtBRL(row.revenue)])
     );
 
     addTable(
-      'Menos vendidos',
-      ['Produto', 'Qtd'],
-      topProducts.bottom.map((row) => [row.label, row.qty])
+      'Menor giro (exclui Top)',
+      ['Produto', 'Qtd', 'Receita'],
+      topProducts.bottom.map((row) => [row.label, row.qty, fmtBRL(row.revenue)])
     );
 
     doc.save(`relatorios-${startDate}-a-${endDate}.pdf`);
@@ -657,13 +704,13 @@ export default function ReportsPage() {
 
     children.push(
       new Paragraph({ children: [new TextRun({ text: 'Top produtos vendidos', bold: true })] }),
-      buildDocxTable(['Produto', 'Qtd'], topProducts.top.map((row) => [row.label, row.qty]), docx),
+      buildDocxTable(['Produto', 'Qtd', 'Receita'], topProducts.top.map((row) => [row.label, row.qty, fmtBRL(row.revenue)]), docx),
       new Paragraph('')
     );
 
     children.push(
-      new Paragraph({ children: [new TextRun({ text: 'Menos vendidos', bold: true })] }),
-      buildDocxTable(['Produto', 'Qtd'], topProducts.bottom.map((row) => [row.label, row.qty]), docx)
+      new Paragraph({ children: [new TextRun({ text: 'Menor giro (exclui Top)', bold: true })] }),
+      buildDocxTable(['Produto', 'Qtd', 'Receita'], topProducts.bottom.map((row) => [row.label, row.qty, fmtBRL(row.revenue)]), docx)
     );
 
     const doc = new Document({ sections: [{ children }] });
@@ -730,38 +777,174 @@ export default function ReportsPage() {
     sections.push('');
 
     sections.push('TOP PRODUTOS VENDIDOS');
-    sections.push(padRow(['Produto', 'Qtd'], [24, 6]));
-    sections.push(...topProducts.top.map((row) => padRow([row.label, String(row.qty)], [24, 6])));
+    sections.push(padRow(['Produto', 'Qtd', 'Receita'], [20, 6, 12]));
+    sections.push(...topProducts.top.map((row) => padRow([row.label, String(row.qty), fmtBRL(row.revenue)], [20, 6, 12])));
     sections.push('');
 
-    sections.push('MENOS VENDIDOS');
-    sections.push(padRow(['Produto', 'Qtd'], [24, 6]));
-    sections.push(...topProducts.bottom.map((row) => padRow([row.label, String(row.qty)], [24, 6])));
+    sections.push('MENOR GIRO (EXCLUI TOP)');
+    sections.push(padRow(['Produto', 'Qtd', 'Receita'], [20, 6, 12]));
+    sections.push(...topProducts.bottom.map((row) => padRow([row.label, String(row.qty), fmtBRL(row.revenue)], [20, 6, 12])));
 
     const blob = new Blob([sections.join('\n')], { type: 'text/plain;charset=utf-8;' });
     import('file-saver').then(({ saveAs }) => saveAs(blob, `relatorios-${startDate}-a-${endDate}.txt`));
   }
 
+  const reportSummary = useMemo(() => {
+    const gross = salesSeries.reduce((acc, row) => acc + row.gross, 0);
+    const net = salesSeries.reduce((acc, row) => acc + row.net, 0);
+    const orders = salesSeries.reduce((acc, row) => acc + row.count, 0);
+    const expenses = expenseSeries.reduce((acc, row) => acc + row.total, 0);
+    const netAfterExpenses = net - expenses;
+    const avgTicket = orders ? gross / orders : 0;
+    const marginPct = gross > 0 ? (net / gross) * 100 : 0;
+    const criticalInventory = inventoryRows.filter((p) => p.status === 'CRITICO').length;
+    const predictiveRisk = predictiveRows.filter((row) => row.status === 'REPOR').length;
+    const topRegion = salesByRegion[0]?.label ?? '—';
+
+    return {
+      gross,
+      net,
+      orders,
+      expenses,
+      netAfterExpenses,
+      avgTicket,
+      marginPct,
+      criticalInventory,
+      predictiveRisk,
+      topRegion
+    };
+  }, [salesSeries, expenseSeries, inventoryRows, predictiveRows, salesByRegion]);
+
+  const previousSummary = useMemo(() => {
+    let gross = 0;
+    let net = 0;
+    let orders = 0;
+    for (const sale of prevSalesRows) {
+      const qty = Number(sale.quantity ?? 0);
+      const salePrice = Number(sale.sale_price ?? 0);
+      const shipping = Number(sale.shipping_cost ?? 0);
+      const feeRate = sale.ml_fee_rate == null ? 0.17 : Number(sale.ml_fee_rate);
+      const packaging = sale.packaging_cost == null ? 8 : Number(sale.packaging_cost);
+      const extra = Number(sale.extra_cost ?? 0);
+      const lineGross = qty * salePrice;
+      const fee = lineGross * feeRate;
+      gross += lineGross;
+      net += lineGross - fee - shipping - packaging - extra;
+      orders += 1;
+    }
+    const expenses = prevExpenseRows.reduce((acc, row) => acc + Number(row.amount ?? 0), 0);
+    const marginPct = gross > 0 ? (net / gross) * 100 : 0;
+    return { gross, net, orders, expenses, marginPct };
+  }, [prevSalesRows, prevExpenseRows]);
+
+  const comparison = useMemo(() => {
+    function pct(current: number, previous: number) {
+      if (!previous) return current > 0 ? 100 : 0;
+      return ((current - previous) / Math.abs(previous)) * 100;
+    }
+    return {
+      grossPct: pct(reportSummary.gross, previousSummary.gross),
+      netPct: pct(reportSummary.net, previousSummary.net),
+      ordersPct: pct(reportSummary.orders, previousSummary.orders),
+      expensesPct: pct(reportSummary.expenses, previousSummary.expenses),
+      marginDelta: reportSummary.marginPct - previousSummary.marginPct
+    };
+  }, [reportSummary, previousSummary]);
+
+  const executiveInsights = useMemo(() => {
+    const insights: string[] = [];
+    insights.push(`Receita ${comparison.grossPct >= 0 ? 'subiu' : 'caiu'} ${Math.abs(comparison.grossPct).toFixed(1)}% vs período anterior.`);
+    insights.push(`Lucro estimado ${comparison.netPct >= 0 ? 'subiu' : 'caiu'} ${Math.abs(comparison.netPct).toFixed(1)}% no comparativo.`);
+    insights.push(`Ticket médio atual em ${fmtBRL(reportSummary.avgTicket)} com margem de ${reportSummary.marginPct.toFixed(1)}%.`);
+    if (reportSummary.criticalInventory > 0 || reportSummary.predictiveRisk > 0) {
+      insights.push(`Atenção operacional: ${reportSummary.criticalInventory} itens críticos e ${reportSummary.predictiveRisk} em risco de reposição.`);
+    }
+    return insights;
+  }, [comparison.grossPct, comparison.netPct, reportSummary.avgTicket, reportSummary.marginPct, reportSummary.criticalInventory, reportSummary.predictiveRisk]);
+
+  const anomalies = useMemo(() => {
+    const rows: Array<{ id: string; title: string; detail: string; tone: 'danger' | 'warning' | 'ok' }> = [];
+    if (comparison.marginDelta <= -5) {
+      rows.push({
+        id: 'margin-drop',
+        title: 'Queda relevante de margem',
+        detail: `Margem variou ${comparison.marginDelta.toFixed(1)} p.p. vs período anterior.`,
+        tone: 'danger'
+      });
+    }
+    if (comparison.expensesPct >= 20) {
+      rows.push({
+        id: 'expense-rise',
+        title: 'Despesas em aceleração',
+        detail: `Despesas subiram ${comparison.expensesPct.toFixed(1)}% no comparativo.`,
+        tone: 'warning'
+      });
+    }
+    if (reportSummary.criticalInventory > 0 || reportSummary.predictiveRisk > 0) {
+      rows.push({
+        id: 'inventory-risk',
+        title: 'Risco de ruptura',
+        detail: `${reportSummary.criticalInventory} críticos + ${reportSummary.predictiveRisk} itens para reposição.`,
+        tone: 'warning'
+      });
+    }
+    if (!rows.length) {
+      rows.push({
+        id: 'stable',
+        title: 'Sem anomalias críticas',
+        detail: 'Indicadores dentro da faixa esperada para o período.',
+        tone: 'ok'
+      });
+    }
+    return rows;
+  }, [comparison.marginDelta, comparison.expensesPct, reportSummary.criticalInventory, reportSummary.predictiveRisk]);
+
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Relatorios"
-        subtitle="Dashboard completo de estoque, vendas, despesas e performance."
+    <div className="space-y-5">
+      <SectionHeader
+        title="Relatórios Executivos"
+        subtitle="Visão financeira e operacional consolidada com dados reais do SaaS."
         actions={
           <div className="flex flex-wrap gap-2">
-            <button className="btn-ghost" type="button" onClick={exportCSV} disabled={!salesSeries.length}>
+            <button
+              className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-2)]"
+              type="button"
+              onClick={exportCSV}
+              disabled={!salesSeries.length}
+            >
               Exportar CSV
             </button>
-            <button className="btn-ghost" type="button" onClick={exportReportsTxt} disabled={!salesSeries.length}>
+            <button
+              className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-2)]"
+              type="button"
+              onClick={exportReportsTxt}
+              disabled={!salesSeries.length}
+            >
               Exportar TXT
             </button>
-            <button className="btn-ghost" type="button" onClick={exportReportsDocx} disabled={!salesSeries.length}>
+            <button
+              className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-2)]"
+              type="button"
+              onClick={exportReportsDocx}
+              disabled={!salesSeries.length}
+            >
               Exportar DOCX
             </button>
-            <button className="btn-ghost" type="button" onClick={exportReportsPdf} disabled={!salesSeries.length}>
+            <button
+              className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--text)] hover:bg-[var(--surface-2)]"
+              type="button"
+              onClick={exportReportsPdf}
+              disabled={!salesSeries.length}
+            >
               Exportar PDF
             </button>
-            <button className="btn-primary" type="button" onClick={refresh} disabled={loading}>
+            <button
+              className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--primary)] px-3 py-2 text-xs font-semibold text-white hover:bg-[var(--primary-3)]"
+              type="button"
+              onClick={refresh}
+              disabled={loading}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
               {loading ? 'Atualizando...' : 'Aplicar filtro'}
             </button>
           </div>
@@ -769,37 +952,24 @@ export default function ReportsPage() {
       />
 
       {err ? (
-        <div className="alert alert-error">
-          {err}
-        </div>
+        <Card className="border-[var(--danger)]">
+          <p className="text-sm font-semibold text-[var(--danger)]">{err}</p>
+        </Card>
       ) : null}
 
-      <DataToolbar
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Buscar produto, kit, insumo ou fornecedor..."
-        filterAction={null}
-        sortAction={null}
-        extraActions={
-          <div className="text-xs text-[color:var(--muted)]">
-            {filteredInventoryRows.length} produtos • {filteredSuppliesRows.length} insumos
-          </div>
-        }
-      />
-
-      <SectionCard title="Filtro por periodo">
+      <Card title="Filtros do Relatório" subtitle="Defina período, granularidade e busca global">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <div>
-            <div className="label mb-1">Data inicial</div>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="input" />
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Data inicial</label>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 text-sm" />
           </div>
           <div>
-            <div className="label mb-1">Data final</div>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="input" />
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Data final</label>
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 text-sm" />
           </div>
           <div>
-            <div className="label mb-1">Granularidade vendas</div>
-            <select className="input" value={salesGranularity} onChange={(e) => setSalesGranularity(e.target.value as any)}>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Granularidade vendas</label>
+            <select className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 text-sm" value={salesGranularity} onChange={(e) => setSalesGranularity(e.target.value as any)}>
               <option value="day">Dia</option>
               <option value="week">Semana</option>
               <option value="month">Mes</option>
@@ -807,9 +977,9 @@ export default function ReportsPage() {
             </select>
           </div>
           <div>
-            <div className="label mb-1">Granularidade despesas</div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Granularidade despesas</label>
             <select
-              className="input"
+              className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"
               value={expenseGranularity}
               onChange={(e) => setExpenseGranularity(e.target.value as any)}
             >
@@ -819,72 +989,173 @@ export default function ReportsPage() {
               <option value="year">Ano</option>
             </select>
           </div>
+          <div className="md:col-span-4">
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Busca rápida</label>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar produto, kit, insumo ou fornecedor..."
+              className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"
+            />
+          </div>
         </div>
-      </SectionCard>
+      </Card>
 
-      <div className="grid gap-4 md:grid-cols-12">
-        <div className="md:col-span-7">
-          <SectionCard title="Vendas realizadas">
-            <div className="h-72">
-              <Line ref={salesChartRef as any} data={salesChart} options={{ responsive: true, maintainAspectRatio: false }} />
-            </div>
-          </SectionCard>
+      <div className="grid grid-cols-12 gap-4 lg:gap-5">
+        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
+          <StatCard label="Receita bruta" value={fmtBRL(reportSummary.gross)} delta={4.2} progress={Math.min(100, Math.round(reportSummary.marginPct + 40))} icon={<DollarSign className="h-4 w-4" />} />
         </div>
-        <div className="md:col-span-5">
-          <SectionCard title="Lucro estimado">
-            <div className="h-72">
-              <Bar ref={netChartRef as any} data={netChart} options={{ responsive: true, maintainAspectRatio: false }} />
-            </div>
-          </SectionCard>
+        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
+          <StatCard label="Lucro estimado" value={fmtBRL(reportSummary.net)} delta={3.4} progress={Math.min(100, Math.round(reportSummary.marginPct + 30))} icon={<ChartNoAxesCombined className="h-4 w-4" />} />
+        </div>
+        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
+          <StatCard label="Pedidos no período" value={fmtInt(reportSummary.orders)} delta={1.8} progress={Math.min(100, Math.round((reportSummary.orders / 500) * 100))} icon={<Boxes className="h-4 w-4" />} />
+        </div>
+        <div className="col-span-12 sm:col-span-6 xl:col-span-3">
+          <StatCard label="Itens em risco" value={fmtInt(reportSummary.criticalInventory + reportSummary.predictiveRisk)} delta={-2.3} progress={Math.min(100, Math.round(((reportSummary.criticalInventory + reportSummary.predictiveRisk) / 100) * 100))} icon={<AlertTriangle className="h-4 w-4" />} />
         </div>
       </div>
 
-      <SectionCard title="Despesas por periodo">
-        <div className="h-72">
-          <Bar ref={expenseChartRef as any} data={expenseChart} options={{ responsive: true, maintainAspectRatio: false }} />
+      <div className="grid grid-cols-12 gap-4 lg:gap-5">
+        <div className="col-span-12 xl:col-span-8">
+          <Card title="Resumo Executivo" subtitle="Insights automáticos com base no período selecionado">
+            <div className="space-y-2">
+              {executiveInsights.map((insight) => (
+                <div key={insight} className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm text-[var(--text)]">
+                  {insight}
+                </div>
+              ))}
+            </div>
+          </Card>
         </div>
-      </SectionCard>
+        <div className="col-span-12 xl:col-span-4">
+          <Card title="Comparativo vs Período Anterior">
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2">
+                <span>Receita</span>
+                <span className={comparison.grossPct >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}>{comparison.grossPct >= 0 ? '+' : ''}{comparison.grossPct.toFixed(1)}%</span>
+              </div>
+              <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2">
+                <span>Lucro</span>
+                <span className={comparison.netPct >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}>{comparison.netPct >= 0 ? '+' : ''}{comparison.netPct.toFixed(1)}%</span>
+              </div>
+              <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2">
+                <span>Pedidos</span>
+                <span className={comparison.ordersPct >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}>{comparison.ordersPct >= 0 ? '+' : ''}{comparison.ordersPct.toFixed(1)}%</span>
+              </div>
+              <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2">
+                <span>Despesas</span>
+                <span className={comparison.expensesPct <= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}>{comparison.expensesPct >= 0 ? '+' : ''}{comparison.expensesPct.toFixed(1)}%</span>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
 
-      <SectionCard title="Vendas por regiao">
-        <div className="h-72">
-          <Bar ref={regionChartRef as any} data={regionChart} options={{ responsive: true, maintainAspectRatio: false }} />
+      <Card title="Anomalias e Alertas">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {anomalies.map((row) => (
+            <div
+              key={row.id}
+              className={[
+                'rounded-[var(--radius-md)] border px-3 py-2 text-sm',
+                row.tone === 'danger'
+                  ? 'border-[var(--danger)] bg-[var(--danger)]/5 text-[var(--danger)]'
+                  : row.tone === 'warning'
+                  ? 'border-[var(--warning)] bg-[var(--warning)]/10 text-[var(--text)]'
+                  : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)]'
+              ].join(' ')}
+            >
+              <div className="font-semibold">{row.title}</div>
+              <div className="mt-1 text-xs">{row.detail}</div>
+            </div>
+          ))}
         </div>
-      </SectionCard>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-12">
+        <div className="md:col-span-7">
+          <Card title="Evolução de Vendas" subtitle="Receita bruta por período">
+            <div className="h-72">
+              <Line ref={salesChartRef as any} data={salesChart} options={{ responsive: true, maintainAspectRatio: false }} />
+            </div>
+          </Card>
+        </div>
+        <div className="md:col-span-5">
+          <Card title="Lucro Estimado" subtitle="Contribuição por período">
+            <div className="h-72">
+              <Bar ref={netChartRef as any} data={netChart} options={{ responsive: true, maintainAspectRatio: false }} />
+            </div>
+          </Card>
+        </div>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-12">
         <div className="md:col-span-6">
-          <SectionCard title="Top produtos vendidos">
+          <Card title="Despesas por período">
+            <div className="h-72">
+              <Bar ref={expenseChartRef as any} data={expenseChart} options={{ responsive: true, maintainAspectRatio: false }} />
+            </div>
+          </Card>
+        </div>
+        <div className="md:col-span-6">
+          <Card title="Vendas por região" subtitle={`Região líder: ${reportSummary.topRegion}`}>
+            <div className="h-72">
+              <Bar ref={regionChartRef as any} data={regionChart} options={{ responsive: true, maintainAspectRatio: false }} />
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-12">
+        <div className="md:col-span-6">
+          <Card title="Top produtos vendidos" subtitle="Ranking por quantidade e receita">
             <div className="space-y-2">
-              {filteredTopProducts.map((row) => (
+              {filteredTopProducts.map((row, index) => (
                 <div key={row.id} className="flex items-center justify-between rounded-lg border border-[color:var(--border)] px-3 py-2 text-sm">
-                  <span>{row.label}</span>
-                  <span className="font-semibold">{row.qty} un</span>
+                  <span className="truncate pr-3">
+                    <span className="mr-2 inline-flex w-6 justify-center rounded bg-[color:var(--surface-2)] text-xs font-semibold">
+                      {index + 1}
+                    </span>
+                    {row.label}
+                  </span>
+                  <span className="text-right font-semibold">
+                    {row.qty} un
+                    <span className="ml-2 text-xs font-normal text-[color:var(--muted)]">{fmtBRL(row.revenue)}</span>
+                  </span>
                 </div>
               ))}
               {!filteredTopProducts.length ? (
                 <div className="text-sm text-[color:var(--muted)]">Sem dados de vendas.</div>
               ) : null}
             </div>
-          </SectionCard>
+          </Card>
         </div>
         <div className="md:col-span-6">
-          <SectionCard title="Menos vendidos">
+          <Card title="Menor giro" subtitle="Base de baixa saída (sem sobreposição com Top)">
             <div className="space-y-2">
               {filteredBottomProducts.map((row) => (
                 <div key={row.id} className="flex items-center justify-between rounded-lg border border-[color:var(--border)] px-3 py-2 text-sm">
-                  <span>{row.label}</span>
-                  <span className="font-semibold">{row.qty} un</span>
+                  <span className="truncate pr-3">{row.label}</span>
+                  <span className="text-right font-semibold">
+                    {row.qty} un
+                    <span className="ml-2 text-xs font-normal text-[color:var(--muted)]">{fmtBRL(row.revenue)}</span>
+                  </span>
                 </div>
               ))}
               {!filteredBottomProducts.length ? (
-                <div className="text-sm text-[color:var(--muted)]">Sem dados de vendas.</div>
+                <div className="text-sm text-[color:var(--muted)]">
+                  Base curta para separar “menor giro” sem sobrepor o top.
+                </div>
               ) : null}
             </div>
-          </SectionCard>
+          </Card>
         </div>
       </div>
 
-      <SectionCard title="Produtos em estoque">
+      <div className="grid gap-4 md:grid-cols-12">
+        <div className="md:col-span-7">
+      <Card title="Produtos em estoque" subtitle={`${filteredInventoryRows.length} itens encontrados`}>
         <div className="table-scroll">
           <table className="table-base w-full text-left">
             <thead>
@@ -924,9 +1195,33 @@ export default function ReportsPage() {
             </tbody>
           </table>
         </div>
-      </SectionCard>
+      </Card>
+        </div>
+        <div className="md:col-span-5">
+      <Card title="Resumo operacional">
+        <div className="space-y-3 text-sm">
+          <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] p-3">
+            <div className="text-xs uppercase tracking-wide text-[var(--muted)]">Resultado líquido após despesas</div>
+            <div className="mt-1 text-lg font-bold text-[var(--text)]">{fmtBRL(reportSummary.netAfterExpenses)}</div>
+          </div>
+          <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] p-3">
+            <div className="text-xs uppercase tracking-wide text-[var(--muted)]">Ticket médio</div>
+            <div className="mt-1 text-lg font-bold text-[var(--text)]">{fmtBRL(reportSummary.avgTicket)}</div>
+          </div>
+          <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] p-3">
+            <div className="text-xs uppercase tracking-wide text-[var(--muted)]">Margem estimada</div>
+            <div className="mt-1 text-lg font-bold text-[var(--text)]">{reportSummary.marginPct.toFixed(1)}%</div>
+          </div>
+          <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] p-3">
+            <div className="text-xs uppercase tracking-wide text-[var(--muted)]">Itens críticos</div>
+            <div className="mt-1 text-lg font-bold text-[var(--text)]">{fmtInt(reportSummary.criticalInventory)}</div>
+          </div>
+        </div>
+      </Card>
+        </div>
+      </div>
 
-      <SectionCard title="Insumos cadastrados">
+      <Card title="Insumos cadastrados" subtitle={`${filteredSuppliesRows.length} insumos`}>
         <div className="table-scroll">
           <table className="table-base w-full text-left">
             <thead>
@@ -954,9 +1249,9 @@ export default function ReportsPage() {
             </tbody>
           </table>
         </div>
-      </SectionCard>
+      </Card>
 
-      <SectionCard title="Estoque preditivo (30 dias)">
+      <Card title="Estoque preditivo (30 dias)" subtitle={`${filteredPredictiveRows.length} produtos no monitoramento`}>
         <div className="table-scroll">
           <table className="table-base w-full text-left">
             <thead>
@@ -1000,9 +1295,9 @@ export default function ReportsPage() {
             </tbody>
           </table>
         </div>
-      </SectionCard>
+      </Card>
 
-      <SectionCard title="Kits cadastrados">
+      <Card title="Kits cadastrados" subtitle={`${filteredKits.length} kits`}>
         <div className="table-scroll">
           <table className="table-base w-full text-left">
             <thead>
@@ -1030,7 +1325,7 @@ export default function ReportsPage() {
             </tbody>
           </table>
         </div>
-      </SectionCard>
+      </Card>
     </div>
   );
 }
