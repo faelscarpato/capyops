@@ -4,7 +4,17 @@ import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogTrigger } from './primitives/Dialog';
 import { GLOBAL_SEARCH_ITEMS } from './globalSearchIndex';
 
-export default function TopbarSearchCommand() {
+type TopbarSearchCommandProps = {
+  className?: string;
+  fullWidth?: boolean;
+  placeholder?: string;
+};
+
+export default function TopbarSearchCommand({
+  className = '',
+  fullWidth = false,
+  placeholder = 'Buscar...'
+}: TopbarSearchCommandProps) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -51,12 +61,16 @@ export default function TopbarSearchCommand() {
         <button
           ref={triggerRef}
           type="button"
-          className="inline-flex h-10 w-full max-w-md items-center justify-between rounded-lg border border-default bg-surface px-3 text-sm text-muted shadow-card transition hover:bg-surface-2"
+          className={[
+            'inline-flex h-10 items-center justify-between rounded-lg border border-default bg-surface px-3 text-sm text-muted shadow-card transition hover:bg-surface-2',
+            fullWidth ? 'w-full' : 'w-full max-w-md',
+            className
+          ].join(' ')}
           aria-label="Buscar no aplicativo"
         >
           <span className="inline-flex items-center gap-2">
             <Search className="h-4 w-4" />
-            <span>Buscar...</span>
+            <span>{placeholder}</span>
           </span>
           <span className="hidden items-center gap-1 rounded-md border border-default bg-surface-2 px-2 py-0.5 text-[11px] text-muted-2 sm:inline-flex">
             <Command className="h-3 w-3" />

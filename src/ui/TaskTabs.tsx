@@ -46,16 +46,16 @@ export function TaskTabs({
   const activeOverflow = overflowTabs.find((tab) => tab.id === activeTab);
 
   return (
-    <div className="card p-2">
+    <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-1.5 md:p-2">
       <nav className="flex items-center gap-2" aria-label={ariaLabel}>
         <div className="flex-1 overflow-x-auto">
-          <div className="flex min-w-max gap-2 pr-1 snap-x">
+          <div className="flex min-w-max gap-1.5 pr-1 snap-x">
             {compactTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => onChange(tab.id)}
                 className={[
-                  'snap-start whitespace-nowrap rounded-lg border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 ring-default',
+                  'snap-start whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 ring-default',
                   activeTab === tab.id
                     ? 'border-[color:var(--primary)] bg-[color:var(--surface-2)] text-[color:var(--primary)]'
                     : 'border-transparent text-muted hover:border-default hover:bg-surface-2 hover:text-fg'

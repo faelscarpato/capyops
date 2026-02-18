@@ -7,9 +7,9 @@ import {
 } from 'lucide-react';
 
 export const PRIMARY_NAV_ITEMS = [
-  { to: '/app', label: 'Visao geral', icon: LayoutDashboard, end: true },
-  { to: '/app/operacoes', label: 'Operacoes', icon: ClipboardCheck },
-  { to: '/app/catalogo', label: 'Catalogo', icon: Grid2x2 },
-  { to: '/app/financeiro', label: 'Financeiro', icon: BarChart3 },
-  { to: '/app/config', label: 'Config', icon: Settings }
+  { to: '/app/dashboard', label: 'Visao geral', mobileLabel: 'Visao', icon: LayoutDashboard, end: false },
+  { to: '/app/operacoes', label: 'Operacoes', mobileLabel: 'Ops', icon: ClipboardCheck },
+  { to: '/app/catalogo', label: 'Catalogo', mobileLabel: 'Catalogo', icon: Grid2x2 },
+  { to: '/app/financeiro', label: 'Financeiro', mobileLabel: 'Financeiro', icon: BarChart3 },
+  { to: '/app/config', label: 'Config', mobileLabel: 'Config', icon: Settings }
 ];
