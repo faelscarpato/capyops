@@ -12,6 +12,9 @@ export async function ensureWorkspace(): Promise<{ owner_id: string }> {
   const token = await getAccessToken();
   const res = await fetch('/api/admin/workspace/ensure', {
     method: 'POST',
+    // Evita 431 (Request Header Fields Too Large) se existirem cookies enormes no domínio.
+    // Autenticação é por Bearer token; não precisamos enviar cookies.
+    credentials: 'omit',
     headers: { Authorization: `Bearer ${token}` }
   });
   if (!res.ok) throw new Error('Falha ao garantir workspace.');
@@ -24,6 +27,7 @@ export async function inviteWorkspaceMember(email: string, role: string): Promis
   const token = await getAccessToken();
   const res = await fetch('/api/admin/workspace/invite', {
     method: 'POST',
+    credentials: 'omit',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, role })
   });

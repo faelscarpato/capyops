@@ -12,6 +12,7 @@ export async function meliOAuthStart(): Promise<{ url: string }> {
   const token = await getAccessToken();
   const res = await fetch('/api/meli/oauth/start', {
     method: 'POST',
+    credentials: 'omit',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -25,6 +26,7 @@ export async function meliOAuthCallback(code: string, state: string): Promise<{ 
   const token = await getAccessToken();
   const res = await fetch('/api/meli/oauth/callback', {
     method: 'POST',
+    credentials: 'omit',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -42,6 +44,7 @@ export async function meliDisconnect(): Promise<{ ok: boolean }> {
   const token = await getAccessToken();
   const res = await fetch('/api/meli/oauth/disconnect', {
     method: 'POST',
+    credentials: 'omit',
     headers: { Authorization: `Bearer ${token}` }
   });
   if (!res.ok) throw new Error('Falha ao desconectar.');
@@ -52,6 +55,7 @@ export async function meliProcessWorker(): Promise<{ processed: number }> {
   const token = await getAccessToken();
   const res = await fetch('/api/meli/worker', {
     method: 'POST',
+    credentials: 'omit',
     headers: { Authorization: `Bearer ${token}` }
   });
   if (!res.ok) throw new Error('Falha ao processar pendências.');
@@ -62,6 +66,7 @@ export async function meliSyncOrders(): Promise<{ synced: number }> {
   const token = await getAccessToken();
   const res = await fetch('/api/meli/orders/sync', {
     method: 'POST',
+    credentials: 'omit',
     headers: { Authorization: `Bearer ${token}` }
   });
   if (!res.ok) throw new Error('Falha ao sincronizar pedidos.');
@@ -72,6 +77,7 @@ export async function meliSyncItems(): Promise<{ synced: number }> {
   const token = await getAccessToken();
   const res = await fetch('/api/meli/items/sync', {
     method: 'POST',
+    credentials: 'omit',
     headers: { Authorization: `Bearer ${token}` }
   });
   if (!res.ok) throw new Error('Falha ao sincronizar catálogo.');
@@ -82,6 +88,7 @@ export async function meliUpdateItem(payload: { ml_listing_id: string; data: any
   const token = await getAccessToken();
   const res = await fetch('/api/meli/items/update', {
     method: 'POST',
+    credentials: 'omit',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ ml_listing_id: payload.ml_listing_id, payload: payload.data })
   });
@@ -96,6 +103,7 @@ export async function meliDownloadLabel(shipmentId: string): Promise<void> {
   const token = await getAccessToken();
   const res = await fetch('/api/meli/shipments/label', {
     method: 'POST',
+    credentials: 'omit',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ shipment_id: shipmentId })
   });
@@ -113,6 +121,7 @@ export async function meliSyncShipments(): Promise<{ synced: number }> {
   const token = await getAccessToken();
   const res = await fetch('/api/meli/shipments/sync', {
     method: 'POST',
+    credentials: 'omit',
     headers: { Authorization: `Bearer ${token}` }
   });
   if (!res.ok) throw new Error('Falha ao sincronizar envios.');
