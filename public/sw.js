@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const STATIC_CACHE = `capyops-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `capyops-runtime-${CACHE_VERSION}`;
 const OFFLINE_URL = '/';
@@ -35,6 +35,14 @@ self.addEventListener('fetch', (event) => {
   }
 
   const requestUrl = new URL(event.request.url);
+
+  // Não interceptar APIs externas sensíveis (evita bugs de cache/opaque e erros em cascata).
+  const isSupabase = requestUrl.hostname.endsWith('.supabase.co');
+  const isMeli = requestUrl.hostname.includes('mercadolibre') || requestUrl.hostname.includes('mercadolivre');
+  if (isSupabase || isMeli) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
 
   // Navegação: tenta rede primeiro e fallback para cache/offline.
   if (event.request.mode === 'navigate') {
@@ -77,7 +85,11 @@ self.addEventListener('fetch', (event) => {
         caches.open(RUNTIME_CACHE).then((cache) => cache.put(event.request, clone));
         return response;
       })
-      .catch(() => caches.match(event.request))
+      .catch(async () => {
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+        return new Response('offline', { status: 504, headers: { 'Content-Type': 'text/plain' } });
+      })
   );
 });
 
