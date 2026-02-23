@@ -76,6 +76,7 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
   // ✅ NÃO interceptar endpoints sensíveis (deixa o browser lidar)
   if (isApiPath(url) || isSupabase(url) || isMeli(url)) {
@@ -83,14 +84,16 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Navegação (HTML/doc): network-first
-  if (req.mode === 'navigate') {
+  if (isSameOrigin(url) && req.mode === 'navigate') {
     event.respondWith(
       (async () => {
         try {
           const fresh = await fetch(req);
-          // Cachear cópia (opcional, ajuda em offline)
-          const cache = await caches.open(RUNTIME_CACHE);
-          cache.put(req, fresh.clone());
+          // Evita cachear respostas opaque/erro.
+          if (fresh && fresh.ok && fresh.type === 'basic') {
+            const cache = await caches.open(RUNTIME_CACHE);
+            cache.put(req, fresh.clone());
+          }
           return fresh;
         } catch (_) {
           // Tenta cache da navegação

@@ -3,7 +3,7 @@
   "name": "CapyOps ML",
   "short_name": "CapyOps",
   "description": "CapyOps: gestão operacional, vendas e financeiro.",
-  "start_url": "https://capyops.pages.dev/",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "display_override": ["tabbed", "window-controls-overlay", "standalone"],
@@ -113,6 +113,7 @@
   "share_target": {
     "action": "/app/operacoes",
     "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
     "params": {
       "title": "title",
       "text": "text",
