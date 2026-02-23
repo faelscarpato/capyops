@@ -49,13 +49,17 @@ export default function AlertsPopover() {
   const countsQuery = useQuery({
     queryKey: queryKeys.alertsCounts,
     queryFn: fetchAlertCounts,
-    refetchInterval: 20_000
+    refetchOnWindowFocus: false,
+    retry: false,
+    refetchInterval: false
   });
 
   const previewQuery = useQuery({
     queryKey: queryKeys.alertsPreview,
     queryFn: fetchAlertPreview,
-    enabled: open
+    enabled: open,
+    refetchOnWindowFocus: false,
+    retry: false
   });
 
   const markReadMutation = useMutation({
@@ -87,6 +91,13 @@ export default function AlertsPopover() {
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
+
+  useEffect(() => {
+    if (open) {
+      queryClient.refetchQueries({ queryKey: queryKeys.alertsCounts });
+      queryClient.refetchQueries({ queryKey: queryKeys.alertsPreview });
+    }
+  }, [open, queryClient]);
 
   const hasError = countsQuery.error || previewQuery.error;
   const errorMessage = hasError instanceof Error ? hasError.message : null;
