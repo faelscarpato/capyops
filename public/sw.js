@@ -1,14 +1,48 @@
+/* capyops Service Worker — v3 hardened
+ * Objetivos:
+ * - NÃO interceptar Supabase nem Mercado Livre nem /api (Pages Functions)
+ * - Offline/Cache só para assets do app e navegação
+ * - Evitar “Failed to fetch” em cascata causado por SW respondWith(fetch) em endpoints externos
+ */
+
 const CACHE_VERSION = 'v3';
 const STATIC_CACHE = `capyops-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `capyops-runtime-${CACHE_VERSION}`;
+
 const OFFLINE_URL = '/';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.webmanifest',
   '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png'
+  '/icons/icon-512x512.png',
 ];
 
+// Ajuste fino: quais tipos de arquivo vale cachear runtime (mesmo origin)
+const RUNTIME_CACHEABLE = /\.(?:js|css|png|jpg|jpeg|webp|svg|ico|woff2|woff|ttf|eot|map)$/i;
+
+// Helpers
+function isSameOrigin(url) {
+  return url.origin === self.location.origin;
+}
+
+function isApiPath(url) {
+  // Pages Functions /api/*
+  return isSameOrigin(url) && url.pathname.startsWith('/api/');
+}
+
+function isSupabase(url) {
+  return url.hostname.endsWith('.supabase.co');
+}
+
+function isMeli(url) {
+  return (
+    url.hostname.includes('mercadolibre') ||
+    url.hostname.includes('mercadolivre') ||
+    url.hostname.includes('meli')
+  );
+}
+
+// Install: precache
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE_ASSETS))
@@ -16,6 +50,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
+// Activate: cleanup + claim
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -29,78 +64,86 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Fetch strategy:
+// - NÃO INTERCEPTAR: Supabase, Meli, /api, requests não-GET
+// - navigate: network-first com fallback cache + offline
+// - assets same-origin: cache-first (com populate runtime)
+// - resto: passa reto (não mexe)
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') {
+  const req = event.request;
+
+  // Só GET
+  if (req.method !== 'GET') return;
+
+  const url = new URL(req.url);
+
+  // ✅ NÃO interceptar endpoints sensíveis (deixa o browser lidar)
+  if (isApiPath(url) || isSupabase(url) || isMeli(url)) {
     return;
   }
 
-  const requestUrl = new URL(event.request.url);
-
-  // Não interceptar APIs externas sensíveis (evita bugs de cache/opaque e erros em cascata).
-  const isSupabase = requestUrl.hostname.endsWith('.supabase.co');
-  const isMeli = requestUrl.hostname.includes('mercadolibre') || requestUrl.hostname.includes('mercadolivre');
-  if (isSupabase || isMeli) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
-
-  // Navegação: tenta rede primeiro e fallback para cache/offline.
-  if (event.request.mode === 'navigate') {
+  // Navegação (HTML/doc): network-first
+  if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const clone = response.clone();
-          caches.open(RUNTIME_CACHE).then((cache) => cache.put(event.request, clone));
-          return response;
-        })
-        .catch(async () => {
-          const cached = await caches.match(event.request);
+      (async () => {
+        try {
+          const fresh = await fetch(req);
+          // Cachear cópia (opcional, ajuda em offline)
+          const cache = await caches.open(RUNTIME_CACHE);
+          cache.put(req, fresh.clone());
+          return fresh;
+        } catch (_) {
+          // Tenta cache da navegação
+          const cached = await caches.match(req);
           if (cached) return cached;
-          return caches.match(OFFLINE_URL);
-        })
+          // Fallback offline (shell)
+          const offline = await caches.match(OFFLINE_URL);
+          return offline || new Response('offline', { status: 504 });
+        }
+      })()
     );
     return;
   }
 
-  // Assets locais: cache-first para melhorar performance/offline.
-  if (requestUrl.origin === self.location.origin) {
+  // Assets do app (same-origin): cache-first
+  if (isSameOrigin(url) && (RUNTIME_CACHEABLE.test(url.pathname) || url.pathname.startsWith('/assets/'))) {
     event.respondWith(
-      caches.match(event.request).then((cached) => {
+      (async () => {
+        const cached = await caches.match(req);
         if (cached) return cached;
-        return fetch(event.request).then((response) => {
-          const clone = response.clone();
-          caches.open(RUNTIME_CACHE).then((cache) => cache.put(event.request, clone));
-          return response;
-        });
-      })
+
+        try {
+          const fresh = await fetch(req);
+          // Só cacheia resposta OK e básica (evita problemas)
+          if (fresh && fresh.ok && fresh.type === 'basic') {
+            const cache = await caches.open(RUNTIME_CACHE);
+            cache.put(req, fresh.clone());
+          }
+          return fresh;
+        } catch (_) {
+          // Se asset não estiver em cache, devolve 504
+          return new Response('offline', {
+            status: 504,
+            headers: { 'Content-Type': 'text/plain' },
+          });
+        }
+      })()
     );
     return;
   }
 
-  // Requests externos: network-first com fallback de cache.
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const clone = response.clone();
-        caches.open(RUNTIME_CACHE).then((cache) => cache.put(event.request, clone));
-        return response;
-      })
-      .catch(async () => {
-        const cached = await caches.match(event.request);
-        if (cached) return cached;
-        return new Response('offline', { status: 504, headers: { 'Content-Type': 'text/plain' } });
-      })
-  );
+  // Resto: não intercepta (evita surprises/opaque issues)
+  return;
 });
 
+// Push notifications
 self.addEventListener('push', (event) => {
-  let payload = { title: 'CapyOps', body: 'Atualizacao disponivel.', url: '/app' };
+  let payload = { title: 'CapyOps', body: 'Atualização disponível.', url: '/app' };
+
   try {
-    if (event.data) {
-      payload = { ...payload, ...event.data.json() };
-    }
+    if (event.data) payload = { ...payload, ...event.data.json() };
   } catch (_) {
-    // Ignore payload parse failures and use default notification text.
+    // ignore parse failure
   }
 
   event.waitUntil(
@@ -108,28 +151,27 @@ self.addEventListener('push', (event) => {
       body: payload.body,
       icon: '/icons/icon-192x192.png',
       badge: '/icons/icon-72x72.png',
-      data: { url: payload.url || '/app' }
+      data: { url: payload.url || '/app' },
     })
   );
 });
 
+// Notification click
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const targetUrl = event.notification?.data?.url || '/app';
+
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       const matched = clients.find((client) => client.url.includes('/app') && 'focus' in client);
-      if (matched) {
-        return matched.focus();
-      }
-      if (self.clients.openWindow) {
-        return self.clients.openWindow(targetUrl);
-      }
+      if (matched) return matched.focus();
+      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
       return undefined;
     })
   );
 });
 
+// Background sync hooks (noop, mas mantidos)
 self.addEventListener('sync', (event) => {
   if (event.tag === 'capyops-sync') {
     event.waitUntil(Promise.resolve());
