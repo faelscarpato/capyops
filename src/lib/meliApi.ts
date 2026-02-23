@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { requestBlob, requestJson } from './http';
 
 async function getAccessToken(): Promise<string> {
   const { data, error } = await supabase.auth.getSession();
@@ -10,105 +11,99 @@ async function getAccessToken(): Promise<string> {
 
 export async function meliOAuthStart(): Promise<{ url: string }> {
   const token = await getAccessToken();
-  const res = await fetch('/api/meli/oauth/start', {
-    method: 'POST',
-    credentials: 'omit',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    }
-  });
-  if (!res.ok) throw new Error('Falha ao iniciar OAuth.');
-  return res.json();
-}
-
-export async function meliOAuthCallback(code: string, state: string): Promise<{ ok: boolean }> {
-  const token = await getAccessToken();
-  const res = await fetch('/api/meli/oauth/callback', {
+  return requestJson<{ url: string }>('/api/meli/oauth/start', {
     method: 'POST',
     credentials: 'omit',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ code, state })
+    timeoutMs: 15_000,
+    actionLabel: 'iniciar OAuth'
   });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(msg || 'Falha ao concluir OAuth.');
-  }
-  return res.json();
+}
+
+export async function meliOAuthCallback(code: string, state: string): Promise<{ ok: boolean }> {
+  const token = await getAccessToken();
+  return requestJson<{ ok: boolean }>('/api/meli/oauth/callback', {
+    method: 'POST',
+    credentials: 'omit',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ code, state }),
+    timeoutMs: 15_000,
+    actionLabel: 'concluir OAuth'
+  });
 }
 
 export async function meliDisconnect(): Promise<{ ok: boolean }> {
   const token = await getAccessToken();
-  const res = await fetch('/api/meli/oauth/disconnect', {
+  return requestJson<{ ok: boolean }>('/api/meli/oauth/disconnect', {
     method: 'POST',
     credentials: 'omit',
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Authorization: `Bearer ${token}` },
+    timeoutMs: 15_000,
+    actionLabel: 'desconectar integração'
   });
-  if (!res.ok) throw new Error('Falha ao desconectar.');
-  return res.json();
 }
 
 export async function meliProcessWorker(): Promise<{ processed: number }> {
   const token = await getAccessToken();
-  const res = await fetch('/api/meli/worker', {
+  return requestJson<{ processed: number }>('/api/meli/worker', {
     method: 'POST',
     credentials: 'omit',
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Authorization: `Bearer ${token}` },
+    timeoutMs: 15_000,
+    actionLabel: 'processar pendências'
   });
-  if (!res.ok) throw new Error('Falha ao processar pendências.');
-  return res.json();
 }
 
 export async function meliSyncOrders(): Promise<{ synced: number }> {
   const token = await getAccessToken();
-  const res = await fetch('/api/meli/orders/sync', {
+  return requestJson<{ synced: number }>('/api/meli/orders/sync', {
     method: 'POST',
     credentials: 'omit',
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Authorization: `Bearer ${token}` },
+    timeoutMs: 15_000,
+    actionLabel: 'sincronizar pedidos'
   });
-  if (!res.ok) throw new Error('Falha ao sincronizar pedidos.');
-  return res.json();
 }
 
 export async function meliSyncItems(): Promise<{ synced: number }> {
   const token = await getAccessToken();
-  const res = await fetch('/api/meli/items/sync', {
+  return requestJson<{ synced: number }>('/api/meli/items/sync', {
     method: 'POST',
     credentials: 'omit',
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Authorization: `Bearer ${token}` },
+    timeoutMs: 15_000,
+    actionLabel: 'sincronizar catálogo'
   });
-  if (!res.ok) throw new Error('Falha ao sincronizar catálogo.');
-  return res.json();
 }
 
 export async function meliUpdateItem(payload: { ml_listing_id: string; data: any }): Promise<{ ok: boolean }> {
   const token = await getAccessToken();
-  const res = await fetch('/api/meli/items/update', {
+  return requestJson<{ ok: boolean }>('/api/meli/items/update', {
     method: 'POST',
     credentials: 'omit',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ml_listing_id: payload.ml_listing_id, payload: payload.data })
+    body: JSON.stringify({ ml_listing_id: payload.ml_listing_id, payload: payload.data }),
+    timeoutMs: 15_000,
+    actionLabel: 'atualizar anúncio'
   });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(msg || 'Falha ao atualizar anúncio.');
-  }
-  return res.json();
 }
 
 export async function meliDownloadLabel(shipmentId: string): Promise<void> {
   const token = await getAccessToken();
-  const res = await fetch('/api/meli/shipments/label', {
+  const blob = await requestBlob('/api/meli/shipments/label', {
     method: 'POST',
     credentials: 'omit',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ shipment_id: shipmentId })
+    body: JSON.stringify({ shipment_id: shipmentId }),
+    timeoutMs: 20_000,
+    actionLabel: 'baixar etiqueta'
   });
-  if (!res.ok) throw new Error('Falha ao baixar etiqueta.');
-  const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -119,11 +114,11 @@ export async function meliDownloadLabel(shipmentId: string): Promise<void> {
 
 export async function meliSyncShipments(): Promise<{ synced: number }> {
   const token = await getAccessToken();
-  const res = await fetch('/api/meli/shipments/sync', {
+  return requestJson<{ synced: number }>('/api/meli/shipments/sync', {
     method: 'POST',
     credentials: 'omit',
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Authorization: `Bearer ${token}` },
+    timeoutMs: 15_000,
+    actionLabel: 'sincronizar envios'
   });
-  if (!res.ok) throw new Error('Falha ao sincronizar envios.');
-  return res.json();
 }

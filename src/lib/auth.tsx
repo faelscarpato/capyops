@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { ensureWorkspace } from './workspaceApi';
@@ -18,6 +18,7 @@ const AuthContext = createContext<AuthCtx | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const bootstrapDoneForUserRef = useRef<string | null>(null);
 
   useEffect(() => {
   let mounted = true;
@@ -28,7 +29,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(sess);
     setLoading(false);
 
-    // Se tiver sessão, garante tarefas do dia e workspace
+    // Se tiver sessão, garante tarefas do dia e workspace apenas 1x por usuário por ciclo de página.
+    const userId = sess?.user?.id ?? null;
+    if (!userId) {
+      bootstrapDoneForUserRef.current = null;
+      return;
+    }
+    if (bootstrapDoneForUserRef.current === userId) {
+      return;
+    }
+    bootstrapDoneForUserRef.current = userId;
+
     if (sess) {
       try {
         const { error } = await supabase.rpc('ensure_daily_tasks');
