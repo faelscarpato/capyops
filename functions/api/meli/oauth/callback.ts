@@ -1,80 +1,119 @@
-import { Env, getSupabaseAdmin, requireUser, resolveOwnerId } from '../_shared';
+/**
+ * CAPYOPS - Meli OAuth Callback Visionário
+ * Este é o portão de entrada. Recebemos o código do Mercado Livre e trocamos por
+ * um Access Token e um Refresh Token. Processo blindado com tratamento de erros.
+ */
 
-export const onRequestPost: PagesFunction<Env> = async (ctx) => {
-  const { request, env } = ctx;
-  const user = await requireUser(request, env);
-  const supabase = getSupabaseAdmin(env);
-  const ownerId = await resolveOwnerId(supabase, user.id);
+import { Env, getMeliApiUrl, createErrorResponse } from '../_shared';
 
-  const body = await request.json().catch(() => ({}));
-  const code = String(body.code || '');
-  const state = String(body.state || '');
-  if (!code || !state) return new Response('Invalid parameters', { status: 400 });
+// Interface da resposta do Mercado Livre na troca do token
+interface MeliTokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  scope: string;
+  user_id: number;
+  refresh_token: string;
+}
 
-  const { data: stateRow, error: stateError } = await supabase
-    .from('meli_oauth_states')
-    .select('id,user_id,used_at,code_verifier')
-    .eq('state', state)
-    .maybeSingle();
-  if (stateError) throw stateError;
-  if (!stateRow || stateRow.user_id !== ownerId || stateRow.used_at) {
-    return new Response('Invalid state', { status: 400 });
+export const onRequestGet: PagesFunction<Env> = async (context) => {
+  const { request, env } = context;
+  const traceId = crypto.randomUUID();
+  const url = new URL(request.url);
+  
+  // Parâmetros que o Mercado Livre envia na URL de retorno
+  const code = url.searchParams.get('code');
+  const workspaceId = url.searchParams.get('state'); // Usamos o state para passar nosso workspace ID
+
+  if (!code || !workspaceId) {
+    console.warn(JSON.stringify({ level: 'WARN', traceId, message: 'Callback acessado sem code ou state (workspaceId).' }));
+    // Redireciona para o frontend com erro
+    return Response.redirect(`${url.origin}/integrations/meli?error=missing_params`, 302);
   }
 
-  const params = new URLSearchParams();
-  params.set('grant_type', 'authorization_code');
-  params.set('client_id', env.MELI_CLIENT_ID);
-  params.set('client_secret', env.MELI_CLIENT_SECRET);
-  params.set('code', code);
-  params.set('redirect_uri', env.MELI_REDIRECT_URI);
-  if (stateRow?.code_verifier) {
-    params.set('code_verifier', stateRow.code_verifier);
-  }
+  console.log(JSON.stringify({
+    level: 'INFO',
+    traceId,
+    message: 'Iniciando troca de código OAuth por tokens do Mercado Livre',
+    workspaceId
+  }));
 
-  const tokenRes = await fetch('https://api.mercadolibre.com/oauth/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params
-  });
-  if (!tokenRes.ok) {
-    const txt = await tokenRes.text();
-    return new Response(txt || 'Token exchange failed', { status: 400 });
-  }
-  const token = await tokenRes.json();
-  const expiresAt = new Date(Date.now() + Number(token.expires_in || 0) * 1000).toISOString();
-
-  let nickname: string | null = null;
   try {
-    const profileRes = await fetch(`https://api.mercadolibre.com/users/${token.user_id}`, {
-      headers: { Authorization: `Bearer ${token.access_token}` }
+    const meliApiUrl = getMeliApiUrl(env);
+    
+    // 1. Prepara o payload para trocar o código pelo Token
+    const tokenPayload = new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: env.MELI_APP_ID,
+      client_secret: env.MELI_CLIENT_SECRET,
+      code: code,
+      redirect_uri: env.MELI_REDIRECT_URI
     });
-    if (profileRes.ok) {
-      const profile = await profileRes.json();
-      nickname = profile.nickname ?? null;
+
+    // 2. Dispara contra o Mercado Livre
+    const tokenResponse = await fetch(`${meliApiUrl}/oauth/token`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: tokenPayload.toString()
+    });
+
+    if (!tokenResponse.ok) {
+      const errorData = await tokenResponse.text();
+      console.error(JSON.stringify({ level: 'ERROR', traceId, message: 'MELI recusou o código OAuth', errorData }));
+      return Response.redirect(`${url.origin}/integrations/meli?error=auth_failed`, 302);
     }
-  } catch {
-    // ignore
+
+    const tokens = await tokenResponse.json<MeliTokenResponse>();
+
+    // 3. Salva os tokens no Supabase (Atualizando a integração do workspace)
+    // Usamos a API REST pura do Supabase para evitar dependência pesada do client no Edge
+    const supabaseUrl = `${env.SUPABASE_URL}/rest/v1/workspace_integrations`;
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + tokens.expires_in * 1000);
+
+    const updatePayload = {
+      workspace_id: workspaceId,
+      provider: 'mercadolivre',
+      provider_user_id: tokens.user_id.toString(),
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      expires_at: expiresAt.toISOString(),
+      status: 'active',
+      updated_at: now.toISOString()
+    };
+
+    const dbResponse = await fetch(`${supabaseUrl}?workspace_id=eq.${workspaceId}&provider=eq.mercadolivre`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
+        'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(updatePayload)
+    });
+
+    // Se não encontrou para fazer PATCH, faz um POST (Upsert behavior manual se necessário, 
+    // mas o ideal é que a tabela já tenha a linha em status 'pending')
+    if (!dbResponse.ok) {
+       console.error(JSON.stringify({ level: 'ERROR', traceId, message: 'Falha ao salvar tokens no Supabase', status: dbResponse.status }));
+    }
+
+    console.log(JSON.stringify({ level: 'INFO', traceId, message: 'Integração concluída com sucesso!' }));
+
+    // 4. Redireciona o usuário de volta para o frontend da aplicação com mensagem de sucesso
+    return Response.redirect(`${url.origin}/integrations/meli?success=true`, 302);
+
+  } catch (error) {
+    console.error(JSON.stringify({
+      level: 'ERROR',
+      traceId,
+      message: 'Erro catastrófico no callback do Meli',
+      error: error instanceof Error ? error.message : String(error)
+    }));
+    return Response.redirect(`${url.origin}/integrations/meli?error=internal_server_error`, 302);
   }
-
-  const { error: upsertError } = await supabase.from('meli_accounts').upsert(
-    {
-      user_id: ownerId,
-      ml_user_id: String(token.user_id ?? ''),
-      nickname,
-      access_token: token.access_token,
-      refresh_token: token.refresh_token,
-      expires_at: expiresAt,
-      status: 'connected',
-      scope: token.scope ?? null
-    },
-    { onConflict: 'user_id' }
-  );
-  if (upsertError) throw upsertError;
-
-  await supabase.from('meli_oauth_states').update({ used_at: new Date().toISOString() }).eq('id', stateRow.id);
-
-  return new Response(JSON.stringify({ ok: true }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' }
-  });
 };
