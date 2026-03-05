@@ -1,11 +1,11 @@
 /**
  * CAPYOPS - Core Shared Meli Environment & Utilities
  * O motor blindado da tua integração com o Mercado Livre.
- * Contém tipagens fortes, autenticação de utilizadores e um cliente HTTP com auto-refresh de tokens.
+ * Contém tipagens fortes, autenticação de utilizadores, gerador de states,
+ * cliente admin do banco e um cliente HTTP com auto-refresh de tokens.
  */
 
-// Como estamos no Cloudflare Workers, usamos fetch nativo para a API REST do Supabase
-// para evitar carregar o SDK completo pesado no Edge, mantendo a performance brutal.
+import { createClient } from '@supabase/supabase-js';
 
 export interface Env {
   SUPABASE_URL: string;
@@ -21,6 +21,28 @@ export interface Env {
  */
 export function getMeliApiUrl(env: Env): string {
   return env.MELI_API_URL || 'https://api.mercadolibre.com';
+}
+
+/**
+ * Retorna uma string aleatória segura para usar como "state" no fluxo OAuth do MELI,
+ * prevenindo ataques de CSRF (Cross-Site Request Forgery).
+ */
+export function randomState(): string {
+  return crypto.randomUUID().replace(/-/g, '');
+}
+
+/**
+ * Inicializa e retorna o cliente Supabase com privilégios administrativos (Service Role).
+ * Essencial para as rotas que precisam ignorar RLS (Row Level Security) e gerenciar workspaces.
+ */
+export function getSupabaseAdmin(env: Env) {
+  return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    }
+  });
 }
 
 /**
@@ -51,7 +73,7 @@ export async function requireUser(request: Request, env: Env) {
     throw new Error('Unauthorized: Missing Authorization header');
   }
 
-  // Usamos a API REST do Supabase para validar o token rapidamente
+  // Usamos a API REST do Supabase para validar o token rapidamente sem instanciar o SDK pesado
   const response = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
     headers: {
       'Authorization': authHeader,
