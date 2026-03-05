@@ -1,75 +1,41 @@
-import { createClient } from '@supabase/supabase-js';
+/**
+ * CAPYOPS - Core Shared Meli Environment
+ * Arquitetura de tipagem estrita para garantir que nenhuma variável de ambiente fuja do controle.
+ */
 
-export type Env = {
+export interface Env {
+  // Supabase
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
-  MELI_CLIENT_ID: string;
+  
+  // Mercado Livre Config
+  MELI_APP_ID: string;
   MELI_CLIENT_SECRET: string;
   MELI_REDIRECT_URI: string;
-  MELI_BASE_URL?: string;
-  MELI_AUTH_URL?: string;
-};
-
-export function getSupabaseAdmin(env: Env) {
-  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('Supabase env vars missing');
-  }
-  return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false }
-  });
+  MELI_API_URL?: string; // Opcional, tem fallback
 }
 
-export async function requireUser(req: Request, env: Env) {
-  const auth = req.headers.get('Authorization') || '';
-  const token = auth.replace('Bearer ', '').trim();
-  if (!token) throw new Error('Unauthorized');
-  const supabase = getSupabaseAdmin(env);
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data.user) throw new Error('Unauthorized');
-  return data.user;
+/**
+ * Retorna a URL base do Mercado Livre, priorizando a env var, com fallback para produção.
+ */
+export function getMeliApiUrl(env: Env): string {
+  return env.MELI_API_URL || 'https://api.mercadolibre.com';
 }
 
-export async function resolveOwnerId(supabase: any, userId: string): Promise<string> {
-  const { data, error } = await supabase
-    .from('workspace_members')
-    .select('owner_id')
-    .eq('member_id', userId)
-    .maybeSingle();
-  if (error) throw error;
-  return data?.owner_id ?? userId;
-}
-
-export function randomState() {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-export async function meliFetch(env: Env, path: string, accessToken: string, extraHeaders?: Record<string, string>) {
-  const base = env.MELI_BASE_URL || 'https://api.mercadolibre.com';
-  const url = path.startsWith('http') ? path : `${base}${path}`;
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}`, ...(extraHeaders ?? {}) }
-  });
-  if (!res.ok) throw new Error(`ML API error ${res.status}`);
-  return res.json();
-}
-
-export async function refreshToken(env: Env, refreshTokenValue: string) {
-  const body = new URLSearchParams();
-  body.set('grant_type', 'refresh_token');
-  body.set('client_id', env.MELI_CLIENT_ID);
-  body.set('client_secret', env.MELI_CLIENT_SECRET);
-  body.set('refresh_token', refreshTokenValue);
-
-  const res = await fetch('https://api.mercadolibre.com/oauth/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body
-  });
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(txt || 'ML refresh failed');
-  }
-  return res.json();
+/**
+ * Formata um erro para resposta padrão da API
+ */
+export function createErrorResponse(message: string, status: number = 400, traceId?: string): Response {
+  return new Response(
+    JSON.stringify({ 
+      error: true, 
+      message, 
+      traceId: traceId || crypto.randomUUID(),
+      timestamp: new Date().toISOString()
+    }), 
+    { 
+      status, 
+      headers: { 'Content-Type': 'application/json' } 
+    }
+  );
 }
