@@ -1,14 +1,13 @@
-name = "capyops-ml"
-compatibility_date = "2026-02-05"
+name = "capyops"
+compatibility_date = "2024-03-01"
+pages_build_output_dir = "dist"
 
-# Cloudflare Pages Functions
+# Aqui declaramos as variáveis de ambiente (deixe os valores sensíveis vazios aqui, 
+# eles devem ser preenchidos no painel web do Cloudflare por segurança).
 [vars]
-# Public endpoints (no secrets). Do NOT put secrets here.
-
-# Secrets must be set via `wrangler secret put` or Cloudflare dashboard:
-# SUPABASE_URL
-# SUPABASE_SERVICE_ROLE_KEY
-# MELI_CLIENT_ID
-# MELI_CLIENT_SECRET
-# MELI_REDIRECT_URI
-# Optional: MELI_AUTH_URL, MELI_BASE_URL
+MELI_API_URL = "https://api.mercadolibre.com"
+# MELI_APP_ID = "preencher no painel"
+# MELI_CLIENT_SECRET = "preencher no painel"
+# MELI_REDIRECT_URI = "preencher no painel"
+# SUPABASE_URL = "preencher no painel"
+# SUPABASE_SERVICE_ROLE_KEY = "preencher no painel"
