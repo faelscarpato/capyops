@@ -6,8 +6,14 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
   const supabase = getSupabaseAdmin(env);
   const ownerId = await resolveOwnerId(supabase, user.id);
 
-  const { error } = await supabase.from('meli_accounts').delete().eq('user_id', ownerId);
-  if (error) throw error;
+  const { error: accountError } = await supabase.from('meli_accounts').delete().eq('user_id', ownerId);
+  if (accountError) throw accountError;
+
+  await supabase
+    .from('meli_oauth_states')
+    .delete()
+    .eq('user_id', ownerId)
+    .is('used_at', null);
 
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,

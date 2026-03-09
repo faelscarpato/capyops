@@ -1,10 +1,3 @@
-/**
- * CAPYOPS - Core Shared Meli Environment & Utilities
- * O motor blindado da tua integração com o Mercado Livre.
- * Contém tipagens fortes, autenticação de utilizadores, gerador de states,
- * cliente admin do banco e um cliente HTTP com auto-refresh de tokens.
- */
-
 import { createClient } from '@supabase/supabase-js';
 
 export interface Env {
@@ -14,27 +7,21 @@ export interface Env {
   MELI_CLIENT_SECRET: string;
   MELI_REDIRECT_URI: string;
   MELI_API_URL?: string;
+  MELI_AUTH_URL?: string;
 }
 
-/**
- * Retorna o URL base do Mercado Livre
- */
 export function getMeliApiUrl(env: Env): string {
   return env.MELI_API_URL || 'https://api.mercadolibre.com';
 }
 
-/**
- * Retorna uma string aleatória segura para usar como "state" no fluxo OAuth do MELI,
- * prevenindo ataques de CSRF (Cross-Site Request Forgery).
- */
+export function getMeliAuthUrl(env: Env): string {
+  return env.MELI_AUTH_URL || 'https://auth.mercadolivre.com.br';
+}
+
 export function randomState(): string {
   return crypto.randomUUID().replace(/-/g, '');
 }
 
-/**
- * Inicializa e retorna o cliente Supabase com privilégios administrativos (Service Role).
- * Essencial para as rotas que precisam ignorar RLS (Row Level Security) e gerenciar workspaces.
- */
 export function getSupabaseAdmin(env: Env) {
   return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: {
@@ -45,39 +32,31 @@ export function getSupabaseAdmin(env: Env) {
   });
 }
 
-/**
- * Padronização de respostas de erro
- */
 export function createErrorResponse(message: string, status: number = 400, traceId?: string): Response {
   return new Response(
-    JSON.stringify({ 
-      error: true, 
-      message, 
+    JSON.stringify({
+      error: true,
+      message,
       traceId: traceId || crypto.randomUUID(),
       timestamp: new Date().toISOString()
-    }), 
-    { 
-      status, 
-      headers: { 'Content-Type': 'application/json' } 
+    }),
+    {
+      status,
+      headers: { 'Content-Type': 'application/json' }
     }
   );
 }
 
-/**
- * Valida o JWT do utilizador via Supabase e devolve os dados do utilizador.
- * Impede que a tua API seja chamada por utilizadores não autenticados.
- */
 export async function requireUser(request: Request, env: Env) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader) {
     throw new Error('Unauthorized: Missing Authorization header');
   }
 
-  // Usamos a API REST do Supabase para validar o token rapidamente sem instanciar o SDK pesado
   const response = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
     headers: {
-      'Authorization': authHeader,
-      'apikey': env.SUPABASE_SERVICE_ROLE_KEY
+      Authorization: authHeader,
+      apikey: env.SUPABASE_SERVICE_ROLE_KEY
     }
   });
 
@@ -85,36 +64,21 @@ export async function requireUser(request: Request, env: Env) {
     throw new Error('Unauthorized: Invalid token');
   }
 
-  const user = await response.json();
-  return user;
+  return await response.json();
 }
 
-/**
- * Recupera o ID do utilizador do Mercado Livre e os tokens associados ao Workspace
- */
-export async function resolveOwnerId(workspaceId: string, env: Env) {
-  const response = await fetch(`${env.SUPABASE_URL}/rest/v1/workspace_integrations?workspace_id=eq.${workspaceId}&provider=eq.mercadolivre&select=*`, {
-    headers: {
-      'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
-      'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
-    }
-  });
+export async function resolveOwnerId(supabase: ReturnType<typeof getSupabaseAdmin>, userId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from('workspace_members')
+    .select('owner_id')
+    .eq('member_id', userId)
+    .maybeSingle();
 
-  if (!response.ok) throw new Error('Falha ao aceder às integrações do workspace');
-  
-  const data = await response.json() as any[];
-  if (!data || data.length === 0) throw new Error('Integração com Mercado Livre não encontrada para este workspace');
-  
-  return data[0]; // Retorna a linha completa (access_token, refresh_token, provider_user_id)
+  if (error) throw error;
+  return data?.owner_id || userId;
 }
 
-/**
- * Fluxo de Refresh Token à prova de bala.
- * Comunica com o MELI, adquire novos tokens e guarda imediatamente no Supabase.
- */
-export async function refreshToken(workspaceId: string, currentRefreshToken: string, env: Env) {
-  const meliApiUrl = getMeliApiUrl(env);
-  
+export async function refreshToken(env: Env, currentRefreshToken: string) {
   const payload = new URLSearchParams({
     grant_type: 'refresh_token',
     client_id: env.MELI_APP_ID,
@@ -122,10 +86,10 @@ export async function refreshToken(workspaceId: string, currentRefreshToken: str
     refresh_token: currentRefreshToken
   });
 
-  const response = await fetch(`${meliApiUrl}/oauth/token`, {
+  const response = await fetch(`${getMeliAuthUrl(env)}/token`, {
     method: 'POST',
     headers: {
-      'Accept': 'application/json',
+      Accept: 'application/json',
       'Content-Type': 'application/x-www-form-urlencoded'
     },
     body: payload.toString()
@@ -136,72 +100,39 @@ export async function refreshToken(workspaceId: string, currentRefreshToken: str
     throw new Error(`Falha ao renovar token do MELI: ${errText}`);
   }
 
-  const tokens = await response.json() as any;
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + tokens.expires_in * 1000);
-
-  // Guarda os novos tokens no Supabase
-  await fetch(`${env.SUPABASE_URL}/rest/v1/workspace_integrations?workspace_id=eq.${workspaceId}&provider=eq.mercadolivre`, {
-    method: 'PATCH',
-    headers: {
-      'apikey': env.SUPABASE_SERVICE_ROLE_KEY,
-      'Authorization': `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      expires_at: expiresAt.toISOString(),
-      updated_at: now.toISOString()
-    })
-  });
-
-  return tokens.access_token;
+  return (await response.json()) as {
+    access_token: string;
+    refresh_token?: string;
+    expires_in?: number;
+    user_id?: number;
+    scope?: string;
+    token_type?: string;
+  };
 }
 
-/**
- * Fetch Wrapper Visionário: `meliFetch`
- * Faz a chamada ao Mercado Livre. Se apanhar um erro 401 (Token Expirado),
- * renova o token automaticamente nos bastidores e tenta novamente sem interromper o fluxo!
- */
 export async function meliFetch(
-  endpoint: string, 
-  options: RequestInit, 
-  workspaceId: string, 
   env: Env,
-  isRetry = false
-): Promise<Response> {
+  endpoint: string,
+  accessToken: string,
+  extraHeaders?: Record<string, string>,
+  init: RequestInit = {}
+): Promise<any> {
   const baseUrl = getMeliApiUrl(env);
-  const integration = await resolveOwnerId(workspaceId, env);
-  
-  const headers = new Headers(options.headers || {});
-  headers.set('Authorization', `Bearer ${integration.access_token}`);
-  
-  const response = await fetch(`${baseUrl}${endpoint}`, {
-    ...options,
+  const url = endpoint.startsWith('http://') || endpoint.startsWith('https://') ? endpoint : `${baseUrl}${endpoint}`;
+  const headers = new Headers(init.headers || {});
+  headers.set('Authorization', `Bearer ${accessToken}`);
+  headers.set('Accept', 'application/json');
+  Object.entries(extraHeaders || {}).forEach(([key, value]) => headers.set(key, value));
+
+  const response = await fetch(url, {
+    ...init,
     headers
   });
 
-  // Se o token expirou e ainda não tentámos renovar
-  if (response.status === 401 && !isRetry) {
-    console.log(`Token expirado para workspace ${workspaceId}. A iniciar Auto-Refresh...`);
-    try {
-      // Renova o token
-      const newAccessToken = await refreshToken(workspaceId, integration.refresh_token, env);
-      
-      // Tenta a requisição novamente com o novo token
-      const retryHeaders = new Headers(options.headers || {});
-      retryHeaders.set('Authorization', `Bearer ${newAccessToken}`);
-      
-      return await fetch(`${baseUrl}${endpoint}`, {
-        ...options,
-        headers: retryHeaders
-      });
-    } catch (refreshError) {
-      console.error('Auto-Refresh falhou', refreshError);
-      throw refreshError;
-    }
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Falha ao consultar Mercado Livre (${response.status}): ${errText || endpoint}`);
   }
 
-  return response;
+  return await response.json();
 }

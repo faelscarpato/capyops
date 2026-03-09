@@ -1,4 +1,4 @@
-import { Env, getSupabaseAdmin, randomState, requireUser, resolveOwnerId } from '../_shared';
+import { Env, getMeliAuthUrl, getSupabaseAdmin, randomState, requireUser, resolveOwnerId } from '../_shared';
 
 function base64UrlEncode(buffer: ArrayBuffer) {
   const bytes = new Uint8Array(buffer);
@@ -39,9 +39,9 @@ export const onRequestPost: PagesFunction<Env> = async (ctx) => {
   });
   if (error) throw error;
 
-  const authUrl = new URL(env.MELI_AUTH_URL || 'https://auth.mercadolivre.com.br/authorization');
+  const authUrl = new URL(`${getMeliAuthUrl(env)}/authorization`);
   authUrl.searchParams.set('response_type', 'code');
-  authUrl.searchParams.set('client_id', env.MELI_CLIENT_ID);
+  authUrl.searchParams.set('client_id', env.MELI_APP_ID);
   authUrl.searchParams.set('redirect_uri', env.MELI_REDIRECT_URI);
   authUrl.searchParams.set('state', state);
   authUrl.searchParams.set('code_challenge', challenge);
